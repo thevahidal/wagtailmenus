@@ -1,4 +1,3 @@
-from copy import deepcopy
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
@@ -56,15 +55,15 @@ class MenuPage(Page):
             children in the subnav, so we create a new item and prepend it to
             menu_items.
             """
-            extra = deepcopy(self)
-            setattr(extra, 'text', self.repeated_item_text or self.title)
-            setattr(extra, 'href', self.relative_url(current_site))
             active_class = ''
             if(apply_active_classes and self == current_page):
                 active_class = ACTIVE_CLASS
-            setattr(extra, 'active_class', active_class)
-
-            menu_items.insert(0, extra)
+            menu_items.insert(0, {
+                'text': self.repeated_item_text or self.title,
+                'href': self.relative_url(current_site),
+                'active_class': active_class,
+                'is_repeated_item': True
+            })
 
         return menu_items
 
