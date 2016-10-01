@@ -28,16 +28,25 @@ class MainMenuAdmin(ModelAdmin):
                 name=self.url_helper.get_action_url_name('edit')),
         )
 
+modeladmin_register(MainMenuAdmin)
+
 
 class FlatMenuAdmin(ModelAdmin):
     model = FlatMenu
     menu_label = _('Flat menus')
     menu_icon = FLATMENU_MENU_ICON
-    list_display = ('title', 'handle', )
-    list_filter = ('site', )
+    list_display = ['title', 'handle']
+    list_filter = ('handle', 'site')
     add_to_settings_menu = True
 
-modeladmin_register(MainMenuAdmin)
+    def get_list_display(self, request):
+        # If menus have been defined for more than one site, add a column
+        # for site to help differentiate between sites
+        site_ids = self.get_queryset(request).values_list('site_id', flat=True)
+        if len(site_ids) > 1:
+            self.list_display.append('site')
+        return self.list_display
+
 modeladmin_register(FlatMenuAdmin)
 
 
