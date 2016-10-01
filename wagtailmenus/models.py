@@ -1,4 +1,6 @@
+from collections import defaultdict
 from copy import copy
+
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
@@ -9,9 +11,18 @@ from wagtail.wagtailadmin.edit_handlers import (
     FieldPanel, PageChooserPanel, MultiFieldPanel, InlinePanel)
 from wagtail.wagtailcore.models import Page, Orderable
 
-from .app_settings import ACTIVE_CLASS
+from .app_settings import ACTIVE_CLASS, SECTION_ROOT_DEPTH
 from .managers import MenuItemManager
 from .panels import menupage_settings_panels
+
+
+def create_page_map_from_qs(page_qs):
+    pages = {}
+    pages_children = defaultdict(list)
+    for page in page_qs:
+        pages[page.pk] = page
+        pages_children[page.path[:-page.steplen]].append(page)
+    return pages, pages_children
 
 
 class MenuPage(Page):
@@ -68,8 +79,9 @@ class MenuPage(Page):
 
         return menu_items
 
-    def has_submenu_items(self, current_page, check_for_children,
-                          allow_repeating_parents, original_menu_tag):
+    def has_submenu_items(self, current_page, prefetched_children,
+                          check_for_children, allow_repeating_parents,
+                          original_menu_tag):
         """
         When rendering pages in a menu template a `has_children_in_menu`
         is added to each page, letting template developers know whether or not
@@ -81,7 +93,7 @@ class MenuPage(Page):
         child pages, you can override this method to meet your needs.
         """
         if check_for_children:
-            return self.get_children().live().in_menu().exists()
+            return bool(prefetched_children)
         return False
 
 
@@ -163,7 +175,42 @@ class MenuItem(models.Model):
     )
 
 
-class MainMenu(ClusterableModel):
+class Menu(ClusterableModel):
+
+    class Meta:
+        abstract = True
+
+    def get_all_pages(self, max_levels, use_specific):
+        tree_pages = Page.objects.none()
+        for item in self.menu_items.page_links_for_display().values(
+            'allow_subnav', 'link_page__path', 'link_page__depth'
+        ):
+            page_path = item['link_page__path']
+            page_depth = item['link_page__depth']
+            if item['allow_subnav'] and page_depth >= SECTION_ROOT_DEPTH:
+                # Get the page for this menuitem, along with any suitable
+                # descendants, down to the specified depth/level
+                branch_pages = Page.objects.filter(
+                    path__startswith=page_path,
+                    depth__lte=page_depth + (max_levels - 1))
+            else:
+                # This is either a homepage link or a page we don't need to
+                # fetch descendants for, so just include the page itself
+                branch_pages = Page.objects.filter(path__exact=page_path)
+            # Add this branch / page to the full tree queryset
+            tree_pages = tree_pages | branch_pages
+        tree_pages = tree_pages.filter(
+            live=True, expired=False, show_in_menus=True)
+        if use_specific:
+            return tree_pages.specific()
+        return tree_pages.select_related('content_type')
+
+    def get_page_map(self, max_levels, use_specific):
+        page_qs = self.get_all_pages(max_levels, use_specific)
+        return create_page_map_from_qs(page_qs)
+
+
+class MainMenu(Menu):
     site = models.OneToOneField(
         'wagtailcore.Site', related_name="main_menu",
         db_index=True, editable=False, on_delete=models.CASCADE
@@ -176,7 +223,7 @@ class MainMenu(ClusterableModel):
     @classmethod
     def get_for_site(cls, site):
         """
-        Get a mainmenu instance for the site.
+        Get or create MainMenu instance for the `site` provided.
         """
         instance, created = cls.objects.get_or_create(site=site)
         return instance
@@ -189,7 +236,7 @@ class MainMenu(ClusterableModel):
     )
 
 
-class FlatMenu(ClusterableModel):
+class FlatMenu(Menu):
     site = models.ForeignKey(
         'wagtailcore.Site',
         related_name="flat_menus")
