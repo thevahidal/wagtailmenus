@@ -204,7 +204,7 @@ class TestTemplateTags(TestCase):
         """
         self.assertHTMLEqual(menu_html, expected_menu_html)
 
-    def test_homepage_sub_menu_one_level(self):
+    def test_homepage_children_menu_one_level(self):
         """
         Test '{% children_menu %}' output for homepage
         """
@@ -223,7 +223,7 @@ class TestTemplateTags(TestCase):
         """
         self.assertHTMLEqual(menu_html, expected_menu_html)
 
-    def test_homepage_sub_menu_three_levels(self):
+    def test_homepage_children_menu_three_levels(self):
         """
         Test '{% children_menu max_levels=3 allow_repeating_parents=False %}' output for homepage
         """
@@ -421,7 +421,7 @@ class TestTemplateTags(TestCase):
         """
         self.assertHTMLEqual(menu_html, expected_menu_html)
 
-    def test_about_us_sub_menu_one_level(self):
+    def test_about_us_children_menu_one_level(self):
         """
         Test '{{ sub_menu self }}' output for 'About us' page
         """
@@ -440,7 +440,7 @@ class TestTemplateTags(TestCase):
         """
         self.assertHTMLEqual(menu_html, expected_menu_html)
 
-    def test_about_us_sub_menu_three_levels(self):
+    def test_about_us_children_menu_three_levels(self):
         """
         Test '{% children_menu max_levels=3 allow_repeating_parents=False %}' output for 'About us' page
         """
