@@ -91,7 +91,7 @@ def main_menu(
     if not show_multiple_levels:
         max_levels = 1
 
-    menu = MainMenu.get_or_create_for_site(site)
+    menu = MainMenu.get_for_site(site)
     page_dict, page_children_dict = menu.get_page_map(max_levels, use_specific)
     context.update({
         'apply_active_classes': apply_active_classes,
