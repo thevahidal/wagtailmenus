@@ -112,8 +112,8 @@ class MenuFromRootPage(Menu):
         )
 
         #  Fetch only a subset of fields if no specific pages are needed
-        if self.use_specific == app_settings.USE_SPECIFIC_OFF:
-            only_fields = app_settings.MINIMAL_PAGE_FIELD_NAMES
+        only_fields = app_settings.MINIMAL_PAGE_FIELD_NAMES
+        if only_fields and self.use_specific == app_settings.USE_SPECIFIC_OFF:
             return pages.only(*only_fields)
 
         # Return 'specific' page instances if required
@@ -145,8 +145,8 @@ class MenuWithMenuItems(ClusterableModel, Menu):
         items_qs = self.get_menu_items_manager().for_display()
 
         #  Fetch only a subset of fields if no specific pages are needed
-        if self.use_specific == app_settings.USE_SPECIFIC_OFF:
-            only_fields = app_settings.MINIMAL_PAGE_FIELD_NAMES
+        only_fields = app_settings.MINIMAL_PAGE_FIELD_NAMES
+        if only_fields and self.use_specific == app_settings.USE_SPECIFIC_OFF:
             return items_qs.only(*only_fields)
 
         if self.use_specific < app_settings.USE_SPECIFIC_TOP_LEVEL:
@@ -199,8 +199,8 @@ class MenuWithMenuItems(ClusterableModel, Menu):
         )
 
         #  Fetch only a subset of fields if no specific pages are needed
-        if self.use_specific == app_settings.USE_SPECIFIC_OFF:
-            only_fields = app_settings.MINIMAL_PAGE_FIELD_NAMES
+        only_fields = app_settings.MINIMAL_PAGE_FIELD_NAMES
+        if only_fields and self.use_specific == app_settings.USE_SPECIFIC_OFF:
             return all_pages.only(*only_fields)
 
         # Return 'specific' page instances if required
