@@ -166,6 +166,12 @@ class AppSettings(object):
     def FLAT_MENU_ITEMS_RELATED_NAME(self):
         return self._setting('FLAT_MENU_ITEMS_RELATED_NAME', 'menu_items')
 
+    @property
+    def MINIMAL_PAGE_FIELD_NAMES(self):
+        return self._setting(
+            'MINIMAL_PAGE_FIELDS', ('id', 'url_path', 'title')
+        )
+
 
 import sys  # noqa
 
