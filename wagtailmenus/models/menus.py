@@ -144,11 +144,6 @@ class MenuWithMenuItems(ClusterableModel, Menu):
         'specific' pages where appropriate."""
         items_qs = self.get_menu_items_manager().for_display()
 
-        #  Fetch only a subset of fields if no specific pages are needed
-        only_fields = app_settings.MINIMAL_PAGE_FIELD_NAMES
-        if only_fields and self.use_specific == app_settings.USE_SPECIFIC_OFF:
-            return items_qs.only(*only_fields)
-
         if self.use_specific < app_settings.USE_SPECIFIC_TOP_LEVEL:
             return items_qs.all()
 
