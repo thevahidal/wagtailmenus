@@ -167,9 +167,13 @@ class AppSettings(object):
         return self._setting('FLAT_MENU_ITEMS_RELATED_NAME', 'menu_items')
 
     @property
-    def MINIMAL_PAGE_FIELD_NAMES(self):
-        return self._setting(
-            'MINIMAL_PAGE_FIELDS', ('id', 'url_path', 'title')
+    def LITE_PAGE_QUERY_MODE(self):
+        return self._setting('LITE_PAGE_QUERY_MODE', False)
+
+    @property
+    def LITE_PAGE_QUERY_FIELD_NAMES(self):
+        return self._setting('LITE_PAGE_QUERY_FIELD_NAMES', (
+            'id', 'url_path', 'title', 'content_type_id')
         )
 
 

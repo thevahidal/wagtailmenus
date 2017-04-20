@@ -111,10 +111,9 @@ class MenuFromRootPage(Menu):
             show_in_menus=True,
         )
 
-        #  Fetch only a subset of fields if no specific pages are needed
-        only_fields = app_settings.MINIMAL_PAGE_FIELD_NAMES
-        if only_fields and self.use_specific == app_settings.USE_SPECIFIC_OFF:
-            return pages.only(*only_fields)
+        #  Fetch only a subset of page fields
+        if app_settings.LITE_PAGE_QUERY_MODE:
+            pages = pages.only(*app_settings.LITE_PAGE_QUERY_FIELD_NAMES)
 
         # Return 'specific' page instances if required
         if self.use_specific == app_settings.USE_SPECIFIC_ALWAYS:
@@ -166,11 +165,11 @@ class MenuWithMenuItems(ClusterableModel, Menu):
         set to show in menus."""
 
         # Build a queryset to get pages for all levels
-        all_pages = Page.objects.none()
+        pages = Page.objects.none()
 
         if self.max_levels == 1:
             # If no additional menus are needed, return an empty queryset
-            return all_pages
+            return pages
 
         for item in self.top_level_items:
 
@@ -183,26 +182,23 @@ class MenuWithMenuItems(ClusterableModel, Menu):
                     item.allow_subnav and
                     page_depth >= app_settings.SECTION_ROOT_DEPTH
                 ):
-                    all_pages = all_pages | Page.objects.filter(
+                    pages = pages | Page.objects.filter(
                         depth__gt=page_depth,
                         depth__lt=page_depth + self.max_levels,
                         path__startswith=page_path)
 
         # Filter the queryset to include only the pages we need for display
-        all_pages = all_pages.filter(
-            live=True, expired=False, show_in_menus=True
-        )
+        pages = pages.filter(live=True, expired=False, show_in_menus=True)
 
-        #  Fetch only a subset of fields if no specific pages are needed
-        only_fields = app_settings.MINIMAL_PAGE_FIELD_NAMES
-        if only_fields and self.use_specific == app_settings.USE_SPECIFIC_OFF:
-            return all_pages.only(*only_fields)
+        #  Fetch only a subset of page fields
+        if app_settings.LITE_PAGE_QUERY_MODE:
+            pages = pages.only(*app_settings.LITE_PAGE_QUERY_FIELD_NAMES)
 
         # Return 'specific' page instances if required
         if self.use_specific == app_settings.USE_SPECIFIC_ALWAYS:
-            return all_pages.specific()
+            return pages.specific()
 
-        return all_pages
+        return pages
 
 
 # ########################################################
