@@ -11,6 +11,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from wagtail.wagtailcore.models import Page
 
+from wagtailmenus.utils.deprecation import RemovedInWagtailMenus25Warning
 from .. import app_settings
 from ..forms import LinkPageAdminForm
 from ..panels import menupage_settings_panels, linkpage_edit_handler
@@ -66,10 +67,13 @@ class MenuPageMixin(models.Model):
                 kwargs.pop('request')
                 repeated_item = self.get_repeated_menu_item(*args, **kwargs)
                 msg = (
-                    "The '{model_name}' model's 'get_repeated_menu_item' "
-                    "method should by updated to accept an 'request' argument"
-                ).format(model_name=self.__class__.__name__)
-                warnings.warn(msg)
+                    "The '%s' model's 'get_repeated_menu_item' "
+                    "method should by updated to accept a 'request' keyword "
+                    "argument. View the 2.3 release notes for more "
+                    "information: https://github.com/rkhleics/wagtailmenus/"
+                    "releases/tag/v.2.3.0" % self.__class__.__name__
+                )
+                warnings.warn(msg, RemovedInWagtailMenus25Warning)
             menu_items.insert(0, repeated_item)
         return menu_items
 

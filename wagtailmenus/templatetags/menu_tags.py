@@ -6,6 +6,7 @@ from django.template import Library
 from wagtail.wagtailcore.models import Page
 
 from wagtailmenus import app_settings
+from wagtailmenus.utils.deprecation import RemovedInWagtailMenus25Warning
 from wagtailmenus.utils.misc import (
     get_attrs_from_context, validate_supplied_values
 )
@@ -207,10 +208,12 @@ def get_sub_menu_items_for_page(
             menu_items = page.modify_submenu_items(*args, **kwargs)
             warning_msg = (
                 "The '%s' model's 'modify_submenu_items' method should be "
-                "updated to accept a 'request' argument"
-                % page.__class__.__name__
+                "updated to accept a 'request' keyword argument. View the "
+                "2.3 release notes for further information: "
+                "https://github.com/rkhleics/wagtailmenus/releases/tag/v.2.3.0"
+                % page.__class__.__name__,
             )
-            warnings.warn(warning_msg)
+            warnings.warn(warning_msg, RemovedInWagtailMenus25Warning)
 
     return page, menu_items
 
@@ -549,10 +552,14 @@ def prime_menu_items(
                                                                       **kwargs)
                         warning_msg = (
                             "The '%s' model's 'has_submenu_items' method "
-                            "should be updated to accept a 'request' argument"
+                            "should be updated to accept a 'request' keyword "
+                            "argument. View the 2.3 release notes for more "
+                            "information: https://github.com/rkhleics/"
+                            "wagtailmenus/releases/tag/v.2.3.0"
                             % page.__class__.__name__
                         )
-                        warnings.warn(warning_msg)
+                        warnings.warn(warning_msg,
+                                      RemovedInWagtailMenus25Warning)
                 else:
                     has_children_in_menu = menu_instance.page_has_children(
                         page)
