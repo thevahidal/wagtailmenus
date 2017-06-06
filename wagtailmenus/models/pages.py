@@ -39,9 +39,9 @@ class MenuPageMixin(models.Model):
         abstract = True
 
     def modify_submenu_items(
-        self, menu_items, current_page, current_ancestor_ids,
-        current_site, allow_repeating_parents, apply_active_classes,
-        original_menu_tag, menu_instance, request=None
+        self, menu_items, current_page, current_ancestor_ids, current_site,
+        allow_repeating_parents, apply_active_classes, original_menu_tag,
+        menu_instance=None, request=None
     ):
         """
         Make any necessary modifications to `menu_items` and return the list
@@ -58,12 +58,13 @@ class MenuPageMixin(models.Model):
             menu_items.
             """
             args = [current_page, current_site, apply_active_classes,
-                    original_menu_tag, request]
+                    original_menu_tag]
+            kwargs = {'request': request}
             try:
-                repeated_item = self.get_repeated_menu_item(*args)
+                repeated_item = self.get_repeated_menu_item(*args, **kwargs)
             except TypeError:
-                args.pop()
-                repeated_item = self.get_repeated_menu_item(*args)
+                kwargs.pop('request')
+                repeated_item = self.get_repeated_menu_item(*args, **kwargs)
                 msg = (
                     "The '{model_name}' model's 'get_repeated_menu_item' "
                     "method should by updated to accept an 'request' argument"
@@ -73,7 +74,7 @@ class MenuPageMixin(models.Model):
         return menu_items
 
     def has_submenu_items(self, current_page, allow_repeating_parents,
-                          original_menu_tag, menu_instance, request=None):
+                          original_menu_tag, menu_instance=None, request=None):
         """
         When rendering pages in a menu template a `has_children_in_menu`
         attribute is added to each page, letting template developers know

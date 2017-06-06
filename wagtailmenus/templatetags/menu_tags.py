@@ -198,13 +198,13 @@ def get_sub_menu_items_for_page(
         args = [
             menu_items, current_page, ancestor_ids, current_site,
             allow_repeating_parents, apply_active_classes, original_menu_tag,
-            menu_instance, request
         ]
+        kwargs = {'menu_instance': menu_instance, 'request': request}
         try:
-            menu_items = page.modify_submenu_items(*args)
+            menu_items = page.modify_submenu_items(*args, **kwargs)
         except TypeError:
-            args.pop()  # try without 'request' arg
-            menu_items = page.modify_submenu_items(*args)
+            kwargs.pop('request')
+            menu_items = page.modify_submenu_items(*args, **kwargs)
             warning_msg = (
                 "The '%s' model's 'modify_submenu_items' method should be "
                 "updated to accept a 'request' argument"
@@ -535,13 +535,18 @@ def prime_menu_items(
                     """
                     args = [
                         current_page, allow_repeating_parents,
-                        original_menu_tag, menu_instance, request
+                        original_menu_tag
                     ]
+                    kwargs = {
+                        'menu_instance': menu_instance, 'request': request
+                    }
                     try:
-                        has_children_in_menu = page.has_submenu_items(*args)
+                        has_children_in_menu = page.has_submenu_items(*args,
+                                                                      **kwargs)
                     except TypeError:
-                        args.pop()  # try without 'request' arg
-                        has_children_in_menu = page.has_submenu_items(*args)
+                        kwargs.pop('request')
+                        has_children_in_menu = page.has_submenu_items(*args,
+                                                                      **kwargs)
                         warning_msg = (
                             "The '%s' model's 'has_submenu_items' method "
                             "should be updated to accept a 'request' argument"
