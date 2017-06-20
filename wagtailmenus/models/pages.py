@@ -68,7 +68,7 @@ class MenuPageMixin(models.Model):
                 repeated_item = self.get_repeated_menu_item(*args, **kwargs)
                 msg = (
                     "The '%s' model's 'get_repeated_menu_item' "
-                    "method should by updated to accept a 'request' keyword "
+                    "method should be updated to accept a 'request' keyword "
                     "argument. View the 2.3 release notes for more "
                     "information: https://github.com/rkhleics/wagtailmenus/"
                     "releases/tag/v.2.3.0" % self.__class__.__name__

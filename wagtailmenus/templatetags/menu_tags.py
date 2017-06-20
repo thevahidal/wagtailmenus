@@ -558,8 +558,7 @@ def prime_menu_items(
                             "wagtailmenus/releases/tag/v.2.3.0"
                             % page.__class__.__name__
                         )
-                        warnings.warn(warning_msg,
-                                      RemovedInWagtailMenus25Warning)
+                        warnings.warn(warning_msg, RemovedInWagtailMenus25Warning)
                 else:
                     has_children_in_menu = menu_instance.page_has_children(
                         page)

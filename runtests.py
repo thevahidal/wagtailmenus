@@ -26,21 +26,17 @@ def parse_args(args=None):
 def runtests():
     args = parse_args()
 
-    only_wagtailmenus = r'^wagtailmenus(\.|$)'
     if args.deprecation == 'all':
         # Show all deprecation warnings from all packages
-        warnings.simplefilter('default', DeprecationWarning)
-        warnings.simplefilter('default', PendingDeprecationWarning)
+        warnings.simplefilter('default', category=DeprecationWarning)
+        warnings.simplefilter('default', category=PendingDeprecationWarning)
     elif args.deprecation == 'pending':
-        # Show all deprecation warnings from wagtail
-        warnings.filterwarnings(
-            'default', category=DeprecationWarning, module=only_wagtailmenus)
-        warnings.filterwarnings(
-            'default', category=PendingDeprecationWarning, module=only_wagtailmenus)
+        # Show all deprecation warnings
+        warnings.filterwarnings('default', category=DeprecationWarning)
+        warnings.filterwarnings('default', category=PendingDeprecationWarning)
     elif args.deprecation == 'imminent':
-        # Show only imminent deprecation warnings from wagtail
-        warnings.filterwarnings(
-            'default', category=DeprecationWarning, module=only_wagtailmenus)
+        # Show only imminent deprecation warnings
+        warnings.filterwarnings('default', category=DeprecationWarning)
     elif args.deprecation == 'none':
         # Deprecation warnings are ignored by default
         pass
