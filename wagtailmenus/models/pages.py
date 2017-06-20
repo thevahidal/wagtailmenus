@@ -11,6 +11,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from wagtail.wagtailcore.models import Page
 
+from wagtailmenus.utils.inspection import accepts_kwarg
 from wagtailmenus.utils.deprecation import RemovedInWagtailMenus25Warning
 from .. import app_settings
 from ..forms import LinkPageAdminForm
@@ -58,14 +59,17 @@ class MenuPageMixin(models.Model):
             children in the subnav, so we create a new item and prepend it to
             menu_items.
             """
-            args = [current_page, current_site, apply_active_classes,
-                    original_menu_tag]
-            kwargs = {'request': request}
-            try:
-                repeated_item = self.get_repeated_menu_item(*args, **kwargs)
-            except TypeError:
-                kwargs.pop('request')
-                repeated_item = self.get_repeated_menu_item(*args, **kwargs)
+
+            # Create dict of kwargs to send to `get_repeated_menu_item`
+            method_kwargs = {
+                'current_page': current_page,
+                'current_site': current_site,
+                'apply_active_classes': apply_active_classes,
+                'original_menu_tag': original_menu_tag,
+            }
+            if accepts_kwarg(self.get_repeated_menu_item, 'request'):
+                method_kwargs['request'] = request
+            else:
                 msg = (
                     "The '%s' model's 'get_repeated_menu_item' "
                     "method should be updated to accept a 'request' keyword "
@@ -74,6 +78,8 @@ class MenuPageMixin(models.Model):
                     "releases/tag/v.2.3.0" % self.__class__.__name__
                 )
                 warnings.warn(msg, RemovedInWagtailMenus25Warning)
+            # Call `get_repeated_menu_item` using the above kwargs dict
+            repeated_item = self.get_repeated_menu_item(**method_kwargs)
             menu_items.insert(0, repeated_item)
         return menu_items
 
