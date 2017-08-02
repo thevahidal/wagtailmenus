@@ -1,5 +1,6 @@
 wagtail>=1.11,<1.12
 beautifulsoup4>=4.4.1,<4.5.0
+git+https://github.com/ababic/wagtail-condensedinlinepanel.git@card-title-defaults
 django-debug-toolbar
 django-extensions
 ipdb

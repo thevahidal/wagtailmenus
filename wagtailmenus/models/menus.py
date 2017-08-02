@@ -11,8 +11,8 @@ from django.utils.translation import ugettext_lazy as _
 
 from modelcluster.models import ClusterableModel
 
-from wagtail.wagtailadmin.edit_handlers import (
-    FieldPanel, MultiFieldPanel, InlinePanel)
+from condensedinlinepanel.edit_handlers import CondensedInlinePanel
+from wagtail.wagtailadmin.edit_handlers import FieldPanel, MultiFieldPanel
 from wagtail.wagtailcore.models import Page
 
 from .. import app_settings
@@ -286,8 +286,8 @@ class AbstractMainMenu(MenuWithMenuItems):
             )
 
     panels = (
-        InlinePanel(
-            app_settings.MAIN_MENU_ITEMS_RELATED_NAME, label=_("menu items")
+        CondensedInlinePanel(
+            app_settings.MAIN_MENU_ITEMS_RELATED_NAME, label=_("menu items"),
         ),
         MultiFieldPanel(
             heading=_("Advanced settings"),
@@ -477,8 +477,8 @@ class AbstractFlatMenu(MenuWithMenuItems):
                 FieldPanel('heading'),
             )
         ),
-        InlinePanel(
-            app_settings.FLAT_MENU_ITEMS_RELATED_NAME, label=_("menu items")
+        CondensedInlinePanel(
+            app_settings.FLAT_MENU_ITEMS_RELATED_NAME, label=_("menu items"),
         ),
         MultiFieldPanel(
             heading=_("Advanced settings"),
