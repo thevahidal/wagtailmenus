@@ -14,6 +14,7 @@ from modelcluster.models import ClusterableModel
 from wagtail.wagtailadmin.edit_handlers import (
     FieldPanel, MultiFieldPanel, InlinePanel)
 from wagtail.wagtailcore.models import Page
+from wagtail.wagtailcore import hooks
 
 from .. import app_settings
 from ..forms import FlatMenuAdminForm
@@ -26,6 +27,7 @@ from ..forms import FlatMenuAdminForm
 class Menu(object):
     """A base class that all other 'menu' classes should inherit from."""
 
+    root_page = None  # Not relevant for all menu classes
     max_levels = 1
     use_specific = app_settings.USE_SPECIFIC_AUTO
     pages_for_display = None
@@ -42,8 +44,11 @@ class Menu(object):
             pass
 
     def get_base_page_queryset(self):
-        return Page.objects.filter(live=True, expired=False,
-                                   show_in_menus=True)
+        pages = Page.objects.filter(live=True, expired=False, show_in_menus=True)
+        # allow hooks to modify the queryset
+        for hook in hooks.get_hooks('menus_modify_base_page_queryset'):
+            pages = hook(pages, self.request, self.max_levels, self.use_specific, self.root_page, self.__class__)
+        return pages
 
     def set_max_levels(self, max_levels):
         if self.max_levels != max_levels:
@@ -95,7 +100,11 @@ class Menu(object):
 
     def get_children_for_page(self, page):
         """Return a list of relevant child pages for a given page."""
-        return self.page_children_dict.get(page.path, [])
+        children = self.page_children_dict.get(page.path, [])
+        # allow hooks to modify the list of children
+        for hook in hooks.get_hooks('menus_modify_children_for_page'):
+            children = hook(children, self.request, self.max_levels, self.use_specific, self.root_page, self.__class__)
+        return children
 
     def page_has_children(self, page):
         """Return a boolean indicating whether a given page has any relevant
@@ -156,27 +165,49 @@ class MenuWithMenuItems(ClusterableModel, Menu):
         abstract = True
 
     def get_base_menuitem_queryset(self):
-        return self.get_menu_items_manager().for_display()
+        menu_items = self.get_menu_items_manager().for_display()
+        # allow hooks to modify the queryset
+        for hook in hooks.get_hooks('menus_modify_base_menuitem_queryset'):
+            menu_items = hook(menu_items, self.request, self.max_levels, self.use_specific, self.__class__)
+        return menu_items
 
     @cached_property
     def top_level_items(self):
         """Return a list of menu items with link_page objects supplemented with
         'specific' pages where appropriate."""
-        items_qs = self.get_base_menuitem_queryset()
-        if self.use_specific < app_settings.USE_SPECIFIC_TOP_LEVEL:
-            return items_qs.all()
+        menu_items = self.get_base_menuitem_queryset()
 
-        """
-        The menu is being generated with a specificity level of TOP_LEVEL
-        or ALWAYS, which means we need to replace 'link_page' values on
-        MenuItem objects with their 'specific' equivalents.
-        """
-        updated_items = []
-        for item in items_qs.all():
-            if item.link_page_id:
-                item.link_page = item.link_page.specific
-            updated_items.append(item)
-        return updated_items
+        # Identify which pages to fetch for the top level items. We use
+        # 'get_base_page_queryset' here, so that if that's being overridden
+        # or modified by hooks, any pages being excluded there are also
+        # excluded at the top level
+        top_level_pages = self.get_base_page_queryset().filter(
+            id__in=menu_items.values_list('link_page_id', flat=True)
+        ).all()
+        if self.use_specific >= app_settings.USE_SPECIFIC_TOP_LEVEL:
+            """
+            The menu is being generated with a specificity level of TOP_LEVEL
+            or ALWAYS, so we use PageQuerySet.specific() to fetch specific
+            page instances as efficiently as possible
+            """
+            top_level_pages = top_level_pages.specific()
+
+        # Evaluate the above queryset to a dictionary, using the IDs as keys
+        pages_dict = {p.id: p for p in top_level_pages}
+
+        # Now build a list to return
+        menu_item_list = []
+        for item in menu_items:
+            if item.link_page_id and item.link_page_id in pages_dict:
+                # If the page for this menu item isn't in 'pages_dict',
+                # the menu item itself shouldn't be returned
+                # (user may have updated 'get_base_page_queryset' to exclude
+                # certain pages)
+                item.link_page = pages_dict.get(item.link_page_id)
+                menu_item_list.append(item)
+            else:
+                menu_item_list.append(item)
+        return menu_item_list
 
     @cached_property
     def pages_for_display(self):
