@@ -495,9 +495,9 @@ def children_menu(
 
 def prime_menu_items(
     request, menu_items, current_site, current_page, current_page_ancestor_ids,
-    use_specific, original_menu_tag, menu_instance, check_for_children=False,
-    allow_repeating_parents=True, apply_active_classes=True,
-    use_absolute_page_urls=False,
+    use_specific, original_menu_tag, menu_instance, current_level=1,
+    check_for_children=False, allow_repeating_parents=True,
+    apply_active_classes=True, use_absolute_page_urls=False,
 ):
     """
     Prepare a list of `MenuItem` or `Page` objects for rendering to a menu
