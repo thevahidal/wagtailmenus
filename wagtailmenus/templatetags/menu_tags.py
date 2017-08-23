@@ -3,6 +3,7 @@ import warnings
 
 from copy import copy
 from django.template import Library
+from wagtail.wagtailcore import hooks
 from wagtail.wagtailcore.models import Page
 
 from wagtailmenus import app_settings
@@ -178,6 +179,7 @@ def get_sub_menu_items_for_page(
     menu_items = prime_menu_items(
         request=request,
         menu_items=children_pages,
+        parent_page=page,
         current_site=current_site,
         current_page=current_page,
         current_page_ancestor_ids=ancestor_ids,
@@ -496,14 +498,13 @@ def children_menu(
 def prime_menu_items(
     request, menu_items, current_site, current_page, current_page_ancestor_ids,
     use_specific, original_menu_tag, menu_instance, current_level=1,
-    check_for_children=False, allow_repeating_parents=True,
+    parent_page=None, check_for_children=False, allow_repeating_parents=True,
     apply_active_classes=True, use_absolute_page_urls=False,
 ):
     """
     Prepare a list of `MenuItem` or `Page` objects for rendering to a menu
     template.
     """
-
     primed_menu_items = []
 
     for item in menu_items:
@@ -637,5 +638,24 @@ def prime_menu_items(
             url = item.relative_url(current_site)
         setattr(item, 'href', url)
         primed_menu_items.append(item)
+
+    # allow hooks to modify the menu_items list further
+    for hook in hooks.get_hooks('menus_modify_menu_items'):
+        primed_menu_items = hook(
+            primed_menu_items,
+            parent_page=parent_page,
+            request=request,
+            current_site=current_site,
+            current_page=current_page,
+            current_level=current_level,
+            current_page_ancestor_ids=current_page_ancestor_ids,
+            use_specific=use_specific,
+            original_menu_tag=original_menu_tag,
+            menu_instance=menu_instance,
+            check_for_children=check_for_children,
+            allow_repeating_parents=allow_repeating_parents,
+            apply_active_classes=apply_active_classes,
+            use_absolute_page_urls=use_absolute_page_urls,
+        )
 
     return primed_menu_items
