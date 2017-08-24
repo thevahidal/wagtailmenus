@@ -45,20 +45,20 @@ class Menu(object):
     def get_default_hook_kwargs(self):
         return {
             'request': self.request,
+            'menu_type': self.menu_type,
             'root_page': self.root_page,
             'max_levels': self.max_levels,
             'use_specific': self.use_specific,
-            'menu_type': self.menu_type,
             'menu_instance': self,
         }
 
     def get_base_page_queryset(self):
-        pages = Page.objects.filter(
+        qs = Page.objects.filter(
             live=True, expired=False, show_in_menus=True)
         # allow hooks to modify the queryset
         for hook in hooks.get_hooks('menus_modify_base_page_queryset'):
-            pages = hook(pages, **self.get_default_hook_kwargs())
-        return pages
+            qs = hook(qs, **self.get_default_hook_kwargs())
+        return qs
 
     def set_max_levels(self, max_levels):
         if self.max_levels != max_levels:
@@ -160,11 +160,11 @@ class MenuFromRootPage(Menu):
 
 
 class SectionMenu(MenuFromRootPage):
-    menu_type = 'section'  # provided to hook methods
+    menu_type = 'section_menu'  # provided to hook methods
 
 
 class ChildrenMenu(MenuFromRootPage):
-    menu_type = 'children'  # provided to hook methods
+    menu_type = 'children_menu'  # provided to hook methods
 
 
 class MenuWithMenuItems(ClusterableModel, Menu):
@@ -175,11 +175,11 @@ class MenuWithMenuItems(ClusterableModel, Menu):
         abstract = True
 
     def get_base_menuitem_queryset(self):
-        menu_items = self.get_menu_items_manager().for_display()
+        qs = self.get_menu_items_manager().for_display()
         # allow hooks to modify the queryset
         for hook in hooks.get_hooks('menus_modify_base_menuitem_queryset'):
-            menu_items = hook(menu_items, **self.get_default_hook_kwargs())
-        return menu_items
+            qs = hook(qs, **self.get_default_hook_kwargs())
+        return qs
 
     @cached_property
     def top_level_items(self):
@@ -263,7 +263,7 @@ class MenuWithMenuItems(ClusterableModel, Menu):
 
 @python_2_unicode_compatible
 class AbstractMainMenu(MenuWithMenuItems):
-    menu_type = 'main'  # provided to hook methods
+    menu_type = 'main_menu'  # provided to hook methods
 
     site = models.OneToOneField(
         'wagtailcore.Site',
@@ -341,7 +341,7 @@ class AbstractMainMenu(MenuWithMenuItems):
 
 @python_2_unicode_compatible
 class AbstractFlatMenu(MenuWithMenuItems):
-    menu_type = 'flat'  # provided to hook methods
+    menu_type = 'flat_menu'  # provided to hook methods
 
     site = models.ForeignKey(
         'wagtailcore.Site',
