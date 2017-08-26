@@ -1,9 +1,9 @@
 
 .. _hooks:
 
-===============================
-Using hooks to manipulate menus
-===============================
+===================================
+Using hooks to modify menu contents
+===================================
 
 On loading, Wagtail will search for any app with the file ``wagtail_hooks.py`` and execute the contents. This provides a way to register your own functions to execute at certain points in Wagtail's execution, such as when a ``Page`` object is saved or when the main menu is constructed.
 
@@ -32,10 +32,10 @@ Wagtailmenus utilises this same 'hooks' mechanism to allow you make modification
     :depth: 2
 
 
-Hooks for modifying data used in menus
-======================================
+Modifying data used in menus
+============================
 
-Menu classes are responsible for fetching all of the data needed for rendering a menu, and feeding it back to the various template tags as and when that data is needed. 
+Menu instances are responsible for fetching all of the data needed for rendering a menu, and feeding it back to the various template tags as and when that data is needed. 
 
 If you need to override a lot of behaviour on menu classes, and you're comfortable with the idea of subclassing the existing classes and models to override the necessary methods, you might want to look at :ref:`custom_menu_classes`. But, if all you want to do is change the result of ``get_base_page_queryset()`` or ``get_base_menuitem_queryset()`` (say, to limit the links that appear based on the currently logged-in user's permissions), you may find it quicker & easier to use the following hooks instead.
 
@@ -195,8 +195,8 @@ Below is a full list of arguments passed that are passed to the above hooks and 
     An integer value indicating the preferred policy for using ``PageQuerySet.specific()`` and ``Page.specific`` in rendering the current menu. For more information see: :ref:`specific_pages_tag_args`.
 
 
-Hooks for modifying menu items before rendering
-===============================================
+Modifying menu items before rendering
+=====================================
 
 While the above tags are focussed on sourcing data required for a menu, the following hooks are called from within the various menu tags, as they prepare menu items for rendering.
 
