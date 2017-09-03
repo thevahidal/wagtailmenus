@@ -2,6 +2,7 @@ from __future__ import absolute_import, unicode_literals
 
 from collections import defaultdict
 
+from condensedinlinepanel.edit_handlers import CondensedInlinePanel
 from django.db import models
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.utils.encoding import python_2_unicode_compatible
@@ -9,8 +10,8 @@ from django.utils.functional import cached_property
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from modelcluster.models import ClusterableModel
-from wagtail.wagtailadmin.edit_handlers import (
-    FieldPanel, MultiFieldPanel, InlinePanel)
+
+from wagtail.wagtailadmin.edit_handlers import FieldPanel, MultiFieldPanel
 from wagtail.wagtailcore import hooks
 from wagtail.wagtailcore.models import Page
 
@@ -349,8 +350,8 @@ class AbstractMainMenu(MenuWithMenuItems):
             )
 
     panels = (
-        InlinePanel(
-            app_settings.MAIN_MENU_ITEMS_RELATED_NAME, label=_("menu items")
+        CondensedInlinePanel(
+            app_settings.MAIN_MENU_ITEMS_RELATED_NAME,
         ),
         MultiFieldPanel(
             heading=_("Advanced settings"),
@@ -542,8 +543,8 @@ class AbstractFlatMenu(MenuWithMenuItems):
                 FieldPanel('heading'),
             )
         ),
-        InlinePanel(
-            app_settings.FLAT_MENU_ITEMS_RELATED_NAME, label=_("menu items")
+        CondensedInlinePanel(
+            app_settings.FLAT_MENU_ITEMS_RELATED_NAME, label=_("menu items"),
         ),
         MultiFieldPanel(
             heading=_("Advanced settings"),
