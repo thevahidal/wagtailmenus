@@ -192,6 +192,7 @@ def flat_menu(
         'current_level': 1,
         'current_template': t.name,
         'sub_menu_template': submenu_t.name,
+        'sub_menu_template_instance': submenu_t,
         'original_menu_tag': 'flat_menu',
         'current_ancestor_ids': ancestor_ids,
         'use_absolute_page_urls': use_absolute_page_urls,
@@ -322,10 +323,6 @@ def sub_menu(
     if use_absolute_page_urls is None:
         use_absolute_page_urls = context.get('use_absolute_page_urls', False)
 
-    if not template:
-        template = context.get(
-            'sub_menu_template', app_settings.DEFAULT_SUB_MENU_TEMPLATE)
-
     original_menu_tag = context.get('original_menu_tag', 'sub_menu')
 
     if original_menu_tag == 'main_menu':
@@ -334,6 +331,14 @@ def sub_menu(
         menu_instance = context.get('matched_menu')
     else:
         menu_instance = context.get('menu_instance')
+
+    # Identify template for rendering
+    if context.get('sub_menu_template_instance'):
+        t = context['sub_menu_template_instance']
+    else:
+        t_name = template or context.get(
+            'sub_menu_template', app_settings.DEFAULT_SUB_MENU_TEMPLATE)
+        t = context.template.engine.get_template(t_name)
 
     # Identify the Page that we need to get children for
     if isinstance(menuitem_or_page, Page):
@@ -357,9 +362,6 @@ def sub_menu(
         use_absolute_page_urls=use_absolute_page_urls,
     )
 
-    # Identify template for rendering
-    t = context.template.engine.get_template(template)
-
     # Prepare context data and render to template
     context_data = context.flatten()
     context_data.update({
@@ -369,7 +371,7 @@ def sub_menu(
         'allow_repeating_parents': allow_repeating_parents,
         'current_level': current_level,
         'max_levels': max_levels,
-        'current_template': template,
+        'current_template': t.name,
         'original_menu_tag': original_menu_tag,
         'use_absolute_page_urls': use_absolute_page_urls,
     })
@@ -386,7 +388,6 @@ def section_menu(
     use_absolute_page_urls=False,
 ):
     """Render a section menu for the current section."""
-
     validate_supplied_values('section_menu', max_levels=max_levels,
                              use_specific=use_specific)
 
@@ -542,6 +543,7 @@ def children_menu(
         'original_menu_tag': 'children_menu',
         'current_template': t.name,
         'sub_menu_template': submenu_t.name,
+        'sub_menu_template_instance': submenu_t,
         'use_specific': use_specific,
         'use_absolute_page_urls': use_absolute_page_urls,
     })
