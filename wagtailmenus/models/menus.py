@@ -16,6 +16,7 @@ from wagtail.wagtailcore.models import Page
 
 from .. import app_settings
 from ..forms import FlatMenuAdminForm
+from ..utils.misc import get_site_from_request
 
 
 # ########################################################
@@ -31,6 +32,73 @@ class Menu(object):
     root_page = None  # Not relevant for all menu classes
     request = None
     menu_type = ''  # provided to hook methods
+    menu_short_name = ''  # used to find templates
+
+    @classmethod
+    def get_template_names(cls, request, template_name=''):
+        """Returns a list of template names / locations to search when
+        rendering an instance of this class. The first template that is found
+        to exist will be used, so the least specific template name should come
+        last in the list"""
+        if template_name:
+            return [template_name]
+        template_names = []
+        menu_str = cls.menu_short_name
+        if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS:
+            site = get_site_from_request(request, fallback_to_default=True)
+            if site:
+                hostname = site.hostname
+                template_names.extend([
+                    "menus/%s/%s/menu.html" % (hostname, menu_str),
+                    "menus/%s/%s_menu.html" % (hostname, menu_str),
+                ])
+        template_names.extend([
+            "menus/%s/menu.html" % menu_str,
+            cls.get_least_specific_template_name(),
+        ])
+        return template_names
+
+    @classmethod
+    def get_least_specific_template_name(cls):
+        """Return a string indicating the least specific template path/name to
+        try when searching for a template to render an instance of this menu
+        class."""
+        raise NotImplementedError(
+            "Subclasses of 'Menu' must define their own "
+            "'get_fallback_template_name' implementation")
+
+    @classmethod
+    def get_sub_menu_template_names(cls, request, template_name=''):
+        """Return a list of template paths/names to search when
+        rendering a sub menu for an instance of this menu class. The first
+        template that is found to exist will be used, so the least specific
+        template name should come last in the list"""
+        if template_name:
+            return [template_name]
+        template_names = []
+        menu_str = cls.menu_short_name
+        if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS:
+            site = get_site_from_request(request, fallback_to_default=True)
+            if site:
+                hostname = site.hostname
+                template_names.extend([
+                    "menus/%s/%s/sub_menu.html" % (hostname, menu_str),
+                    "menus/%s/%s_sub_menu.html" % (hostname, menu_str),
+                    "menus/%s/sub_menu.html" % hostname,
+                ])
+        template_names.extend([
+            "menus/%s/sub_menu.html" % menu_str,
+            "menus/%s_sub_menu.html" % menu_str,
+            cls.get_least_specific_sub_menu_template_name(),
+        ])
+        return template_names
+
+    @classmethod
+    def get_least_specific_sub_menu_template_name(cls):
+        """Return a string indicating the last template path/name to try when
+        searching for a template to render a sub menu for an instance of this
+        menu class"""
+        return app_settings.DEFAULT_SUB_MENU_TEMPLATE
 
     def clear_page_cache(self):
         try:
@@ -162,10 +230,18 @@ class MenuFromRootPage(Menu):
 
 class SectionMenu(MenuFromRootPage):
     menu_type = 'section_menu'  # provided to hook methods
+    menu_short_name = 'section'  # used to find templates
+
+    def get_least_specific_template_name(self):
+        return app_settings.DEFAULT_SECTION_MENU_TEMPLATE
 
 
 class ChildrenMenu(MenuFromRootPage):
     menu_type = 'children_menu'  # provided to hook methods
+    menu_short_name = 'children'  # used to find templates
+
+    def get_least_specific_template_name(self):
+        return app_settings.DEFAULT_CHILDREN_MENU_TEMPLATE
 
 
 class MenuWithMenuItems(ClusterableModel, Menu):
@@ -285,6 +361,7 @@ class MenuWithMenuItems(ClusterableModel, Menu):
 @python_2_unicode_compatible
 class AbstractMainMenu(MenuWithMenuItems):
     menu_type = 'main_menu'  # provided to hook methods
+    menu_short_name = 'main'  # used to find templates
 
     site = models.OneToOneField(
         'wagtailcore.Site',
@@ -328,6 +405,10 @@ class AbstractMainMenu(MenuWithMenuItems):
         instance, created = cls.objects.get_or_create(site=site)
         return instance
 
+    @classmethod
+    def get_least_specific_template_name(cls):
+        return app_settings.DEFAULT_MAIN_MENU_TEMPLATE
+
     def __str__(self):
         return _('Main menu for %(site_name)s') % {
             'site_name': self.site.site_name or self.site
@@ -363,6 +444,7 @@ class AbstractMainMenu(MenuWithMenuItems):
 @python_2_unicode_compatible
 class AbstractFlatMenu(MenuWithMenuItems):
     menu_type = 'flat_menu'  # provided to hook methods
+    menu_short_name = 'flat'  # used to find templates
 
     site = models.ForeignKey(
         'wagtailcore.Site',
@@ -436,6 +518,10 @@ class AbstractFlatMenu(MenuWithMenuItems):
             ).first()
         return menu
 
+    @classmethod
+    def get_least_specific_template_name(cls):
+        return app_settings.DEFAULT_FLAT_MENU_TEMPLATE
+
     def __str__(self):
         return '%s (%s)' % (self.title, self.handle)
 
@@ -455,25 +541,25 @@ class AbstractFlatMenu(MenuWithMenuItems):
             )
 
     def get_template_names(self, request, template_name=None):
-        """Returns a list of template names to search for when rendering this
-        menu to a template. The first template that is found will be used."""
+        """Returns a list of template names to search for when rendering a
+        a specific flat menu object (making use of self.handle)"""
 
         if template_name:
             return [template_name]
         template_names = []
-        if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS and getattr(
-            request, 'site', None
-        ):
-            hostname = request.site.hostname
-            template_names.extend([
-                "menus/%s/flat/%s/menu.html" % (hostname, self.handle,),
-                "menus/%s/flat/%s.html" % (hostname, self.handle,),
-                "menus/%s/%s/menu.html" % (hostname, self.handle,),
-                "menus/%s/%s.html" % (hostname, self.handle,),
-                "menus/%s/flat/menu.html" % hostname,
-                "menus/%s/flat/default.html" % hostname,
-                "menus/%s/flat_menu.html" % hostname,
-            ])
+        if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS:
+            site = get_site_from_request(request, fallback_to_default=True)
+            if site:
+                hostname = site.hostname
+                template_names.extend([
+                    "menus/%s/flat/%s/menu.html" % (hostname, self.handle),
+                    "menus/%s/flat/%s.html" % (hostname, self.handle),
+                    "menus/%s/%s/menu.html" % (hostname, self.handle),
+                    "menus/%s/%s.html" % (hostname, self.handle),
+                    "menus/%s/flat/menu.html" % hostname,
+                    "menus/%s/flat/default.html" % hostname,
+                    "menus/%s/flat_menu.html" % hostname,
+                ])
         template_names.extend([
             "menus/flat/%s/menu.html" % self.handle,
             "menus/flat/%s.html" % self.handle,
@@ -481,37 +567,36 @@ class AbstractFlatMenu(MenuWithMenuItems):
             "menus/%s.html" % self.handle,
             "menus/flat/default.html",
             "menus/flat/menu.html",
-            app_settings.DEFAULT_FLAT_MENU_TEMPLATE,
+            self.get_least_specific_template_name(),
         ])
         return template_names
 
     def get_sub_menu_template_names(self, request, template_name=None):
         """Returns a list of template names to search for when rendering a
-        sub menu for this menu to a template. The first template that is found
-        will be used."""
-
+        a sub menu for a specific flat menu object (making use of self.handle)
+        """
         if template_name:
             return [template_name]
         template_names = []
-        if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS and getattr(
-            request, 'site', None
-        ):
-            hostname = request.site.hostname
-            template_names.extend([
-                "menus/%s/flat/%s/sub_menu.html" % (hostname, self.handle,),
-                "menus/%s/flat/%s_sub_menu.html" % (hostname, self.handle,),
-                "menus/%s/%s/sub_menu.html" % (hostname, self.handle,),
-                "menus/%s/%s_sub_menu.html" % (hostname, self.handle,),
-                "menus/%s/flat/sub_menu.html" % hostname,
-                "menus/%s/sub_menu.html" % hostname,
-            ])
+        if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS:
+            site = get_site_from_request(request, fallback_to_default=True)
+            if site:
+                hostname = site.hostname
+                template_names.extend([
+                    "menus/%s/flat/%s/sub_menu.html" % (hostname, self.handle),
+                    "menus/%s/flat/%s_sub_menu.html" % (hostname, self.handle),
+                    "menus/%s/%s/sub_menu.html" % (hostname, self.handle),
+                    "menus/%s/%s_sub_menu.html" % (hostname, self.handle),
+                    "menus/%s/flat/sub_menu.html" % hostname,
+                    "menus/%s/sub_menu.html" % hostname,
+                ])
         template_names.extend([
             "menus/flat/%s/sub_menu.html" % self.handle,
             "menus/flat/%s_sub_menu.html" % self.handle,
             "menus/%s/sub_menu.html" % self.handle,
             "menus/%s_sub_menu.html" % self.handle,
             "menus/flat/sub_menu.html",
-            app_settings.DEFAULT_SUB_MENU_TEMPLATE,
+            self.get_least_specific_sub_menu_template_name(),
         ])
         return template_names
 
