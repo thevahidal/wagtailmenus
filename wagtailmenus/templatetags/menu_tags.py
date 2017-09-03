@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 import warnings
 
-from django.template import Context, Library
+from django.template import Library
+from django.template.loader import get_template, select_template
 from wagtail.wagtailcore import hooks
 from wagtail.wagtailcore.models import Page
 
@@ -76,12 +77,9 @@ def main_menu(
         menu_items = hook(menu_items, **kwargs)
 
     # Identify templates for rendering
-    engine = context.template.engine
-    template_names = menu.get_template_names(request, template)
-    template = engine.select_template(template_names)
-    sub_menu_template_names = menu.get_sub_menu_template_names(
-        request, sub_menu_template)
-    sub_menu_template = engine.select_template(sub_menu_template_names)
+    t = select_template(menu.get_template_names(request, template))
+    st = select_template(
+        menu.get_sub_menu_template_names(request, sub_menu_template))
 
     # Prepare context data and render to template
     context_data = context.flatten()
@@ -93,14 +91,15 @@ def main_menu(
         'apply_active_classes': apply_active_classes,
         'allow_repeating_parents': allow_repeating_parents,
         'current_level': 1,
-        'current_template': template.name,
-        'sub_menu_template': sub_menu_template.name,
+        'current_template': t.template.name,
+        'sub_menu_template': st.template.name,
+        'sub_menu_template_instance': st,
         'original_menu_tag': 'main_menu',
         'section_root': root,
         'current_ancestor_ids': ancestor_ids,
         'use_absolute_page_urls': use_absolute_page_urls,
     })
-    return template.render(Context(context_data), request)
+    return t.render(context_data, request)
 
 
 @register.simple_tag(takes_context=True)
@@ -170,12 +169,9 @@ def flat_menu(
         menu_items = hook(menu_items, **kwargs)
 
     # Identify templates for rendering
-    engine = context.template.engine
-    template_names = menu.get_template_names(request, template)
-    template = engine.select_template(template_names)
-    sub_menu_template_names = menu.get_sub_menu_template_names(
-        request, sub_menu_template)
-    sub_menu_template = engine.select_template(sub_menu_template_names)
+    t = select_template(menu.get_template_names(request, template))
+    st = select_template(
+        menu.get_sub_menu_template_names(request, sub_menu_template))
 
     # Prepare context data and render to template
     context_data = context.flatten()
@@ -190,13 +186,14 @@ def flat_menu(
         'apply_active_classes': apply_active_classes,
         'allow_repeating_parents': allow_repeating_parents,
         'current_level': 1,
-        'current_template': template.name,
-        'sub_menu_template': sub_menu_template.name,
+        'current_template': t.template.name,
+        'sub_menu_template': st.template.name,
+        'sub_menu_template_instance': st,
         'original_menu_tag': 'flat_menu',
         'current_ancestor_ids': ancestor_ids,
         'use_absolute_page_urls': use_absolute_page_urls,
     })
-    return template.render(Context(context_data), request)
+    return t.render(context_data, request)
 
 
 def get_sub_menu_items_for_page(
@@ -351,12 +348,9 @@ def section_menu(
         setattr(section_root, 'active_class', active_class)
 
     # Identify templates for rendering
-    engine = context.template.engine
-    template_names = menu.get_template_names(request, template)
-    template = engine.select_template(template_names)
-    sub_menu_template_names = menu.get_sub_menu_template_names(
-        request, sub_menu_template)
-    sub_menu_template = engine.select_template(sub_menu_template_names)
+    t = select_template(menu.get_template_names(request, template))
+    st = select_template(
+        menu.get_sub_menu_template_names(request, sub_menu_template))
 
     # Prepare context data and render to template
     context_data = context.flatten()
@@ -369,14 +363,15 @@ def section_menu(
         'allow_repeating_parents': allow_repeating_parents,
         'current_level': 1,
         'max_levels': max_levels,
-        'current_template': template.name,
-        'sub_menu_template': sub_menu_template.name,
+        'current_template': t.template.name,
+        'sub_menu_template': st.template.name,
+        'sub_menu_template_instance': st,
         'original_menu_tag': 'section_menu',
         'current_ancestor_ids': ancestor_ids,
         'use_specific': use_specific,
         'use_absolute_page_urls': use_absolute_page_urls,
     })
-    return template.render(Context(context_data), request)
+    return t.render(context_data, request)
 
 
 @register.simple_tag(takes_context=True)
@@ -424,12 +419,9 @@ def children_menu(
     )
 
     # Identify templates for rendering
-    engine = context.template.engine
-    template_names = menu.get_template_names(request, template)
-    template = engine.select_template(template_names)
-    sub_menu_template_names = menu.get_sub_menu_template_names(
-        request, sub_menu_template)
-    sub_menu_template = engine.select_template(sub_menu_template_names)
+    t = select_template(menu.get_template_names(request, template))
+    st = select_template(
+        menu.get_sub_menu_template_names(request, sub_menu_template))
 
     # Prepare context data and render to template
     context_data = context.flatten()
@@ -442,12 +434,13 @@ def children_menu(
         'current_level': 1,
         'max_levels': max_levels,
         'original_menu_tag': 'children_menu',
-        'current_template': template.name,
-        'sub_menu_template': sub_menu_template.name,
+        'current_template': t.template.name,
+        'sub_menu_template': st.template.name,
+        'sub_menu_template_instance': st,
         'use_specific': use_specific,
         'use_absolute_page_urls': use_absolute_page_urls,
     })
-    return template.render(Context(context_data), request)
+    return t.render(context_data, request)
 
 
 @register.simple_tag(takes_context=True)
@@ -503,11 +496,6 @@ def sub_menu(
     else:
         menu_instance = context.get('menu_instance')
 
-    # Identify template for rendering
-    template_name = template or context.get(
-        'sub_menu_template', app_settings.DEFAULT_SUB_MENU_TEMPLATE)
-    template = context.template.engine.get_template(template_name)
-
     # Identify the Page that we need to get children for
     if isinstance(menuitem_or_page, Page):
         parent_page = menuitem_or_page
@@ -530,6 +518,14 @@ def sub_menu(
         use_absolute_page_urls=use_absolute_page_urls,
     )
 
+    # Identify template for rendering
+    if template:
+        t = get_template(template)
+    else:
+        t = context.get('sub_menu_template_instance') or get_template(
+            context.get('sub_menu_template', app_settings.DEFAULT_SUB_MENU_TEMPLATE)
+        )
+
     # Prepare context data and render to template
     context_data = context.flatten()
     context_data.update({
@@ -539,11 +535,11 @@ def sub_menu(
         'allow_repeating_parents': allow_repeating_parents,
         'current_level': current_level,
         'max_levels': max_levels,
-        'current_template': template.name,
+        'current_template': t.template.name,
         'original_menu_tag': original_menu_tag,
         'use_absolute_page_urls': use_absolute_page_urls,
     })
-    return template.render(Context(context_data), request)
+    return t.render(context_data, request)
 
 
 def prime_menu_items(
