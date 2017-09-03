@@ -232,7 +232,8 @@ class SectionMenu(MenuFromRootPage):
     menu_type = 'section_menu'  # provided to hook methods
     menu_short_name = 'section'  # used to find templates
 
-    def get_least_specific_template_name(self):
+    @classmethod
+    def get_least_specific_template_name(cls):
         return app_settings.DEFAULT_SECTION_MENU_TEMPLATE
 
 
@@ -240,7 +241,8 @@ class ChildrenMenu(MenuFromRootPage):
     menu_type = 'children_menu'  # provided to hook methods
     menu_short_name = 'children'  # used to find templates
 
-    def get_least_specific_template_name(self):
+    @classmethod
+    def get_least_specific_template_name(cls):
         return app_settings.DEFAULT_CHILDREN_MENU_TEMPLATE
 
 
