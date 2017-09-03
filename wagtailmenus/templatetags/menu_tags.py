@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import warnings
 
 from django.template import Library
-from django.template.loader import get_template, select_template
+from django.template.loader import get_template
 from wagtail.wagtailcore import hooks
 from wagtail.wagtailcore.models import Page
 
@@ -77,9 +77,8 @@ def main_menu(
         menu_items = hook(menu_items, **kwargs)
 
     # Identify templates for rendering
-    t = select_template(menu.get_template_names(request, template))
-    st = select_template(
-        menu.get_sub_menu_template_names(request, sub_menu_template))
+    t = menu.get_template(request, template)
+    st = menu.get_sub_menu_template(request, sub_menu_template)
 
     # Prepare context data and render to template
     context_data = context.flatten()
@@ -169,9 +168,8 @@ def flat_menu(
         menu_items = hook(menu_items, **kwargs)
 
     # Identify templates for rendering
-    t = select_template(menu.get_template_names(request, template))
-    st = select_template(
-        menu.get_sub_menu_template_names(request, sub_menu_template))
+    t = menu.get_template(request, template)
+    st = menu.get_sub_menu_template(request, sub_menu_template)
 
     # Prepare context data and render to template
     context_data = context.flatten()
@@ -348,9 +346,8 @@ def section_menu(
         setattr(section_root, 'active_class', active_class)
 
     # Identify templates for rendering
-    t = select_template(menu.get_template_names(request, template))
-    st = select_template(
-        menu.get_sub_menu_template_names(request, sub_menu_template))
+    t = menu.get_template(request, template)
+    st = menu.get_sub_menu_template(request, sub_menu_template)
 
     # Prepare context data and render to template
     context_data = context.flatten()
@@ -419,9 +416,8 @@ def children_menu(
     )
 
     # Identify templates for rendering
-    t = select_template(menu.get_template_names(request, template))
-    st = select_template(
-        menu.get_sub_menu_template_names(request, sub_menu_template))
+    t = menu.get_template(request, template)
+    st = menu.get_sub_menu_template(request, sub_menu_template)
 
     # Prepare context data and render to template
     context_data = context.flatten()
@@ -522,9 +518,7 @@ def sub_menu(
     if template:
         t = get_template(template)
     else:
-        t = context.get('sub_menu_template_instance') or get_template(
-            context.get('sub_menu_template', app_settings.DEFAULT_SUB_MENU_TEMPLATE)
-        )
+        t = context.get('sub_menu_template_instance')
 
     # Prepare context data and render to template
     context_data = context.flatten()

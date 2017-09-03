@@ -4,6 +4,7 @@ from collections import defaultdict
 
 from django.db import models
 from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.template.loader import get_template, select_template
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.functional import cached_property
 from django.utils.safestring import mark_safe
@@ -35,13 +36,17 @@ class Menu(object):
     menu_short_name = ''  # used to find templates
 
     @classmethod
-    def get_template_names(cls, request, template_name=''):
+    def get_template(cls, request, user_specified_template=''):
+        if user_specified_template:
+            return get_template(user_specified_template)
+        return select_template(cls.get_template_names(request))
+
+    @classmethod
+    def get_template_names(cls, request):
         """Returns a list of template names / locations to search when
         rendering an instance of this class. The first template that is found
         to exist will be used, so the least specific template name should come
         last in the list"""
-        if template_name:
-            return [template_name]
         template_names = []
         menu_str = cls.menu_short_name
         if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS:
@@ -68,13 +73,17 @@ class Menu(object):
             "'get_fallback_template_name' implementation")
 
     @classmethod
-    def get_sub_menu_template_names(cls, request, template_name=''):
+    def get_sub_menu_template(cls, request, user_specified_template=''):
+        if user_specified_template:
+            return get_template(user_specified_template)
+        return select_template(cls.get_sub_menu_template_names(request))
+
+    @classmethod
+    def get_sub_menu_template_names(cls, request):
         """Return a list of template paths/names to search when
         rendering a sub menu for an instance of this menu class. The first
         template that is found to exist will be used, so the least specific
         template name should come last in the list"""
-        if template_name:
-            return [template_name]
         template_names = []
         menu_str = cls.menu_short_name
         if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS:
@@ -542,12 +551,14 @@ class AbstractFlatMenu(MenuWithMenuItems):
                 )
             )
 
-    def get_template_names(self, request, template_name=None):
+    def get_template(self, request, user_specified_template=''):
+        if user_specified_template:
+            return get_template(user_specified_template)
+        return select_template(self.get_template_names(request))
+
+    def get_template_names(self, request):
         """Returns a list of template names to search for when rendering a
         a specific flat menu object (making use of self.handle)"""
-
-        if template_name:
-            return [template_name]
         template_names = []
         if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS:
             site = get_site_from_request(request, fallback_to_default=True)
@@ -573,12 +584,15 @@ class AbstractFlatMenu(MenuWithMenuItems):
         ])
         return template_names
 
-    def get_sub_menu_template_names(self, request, template_name=None):
+    def get_sub_menu_template(self, request, user_specified_template=''):
+        if user_specified_template:
+            return get_template(user_specified_template)
+        return select_template(self.get_sub_menu_template_names(request))
+
+    def get_sub_menu_template_names(self, request):
         """Returns a list of template names to search for when rendering a
         a sub menu for a specific flat menu object (making use of self.handle)
         """
-        if template_name:
-            return [template_name]
         template_names = []
         if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS:
             site = get_site_from_request(request, fallback_to_default=True)
