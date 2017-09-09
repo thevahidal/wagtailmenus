@@ -1,8 +1,8 @@
 import warnings
 
 from wagtailmenus import app_settings
-from wagtailmenus.utils.deprecation import RemovedInWagtailMenus27Warning
-from wagtailmenus.utils.misc import get_site_from_request
+from .deprecation import RemovedInWagtailMenus27Warning
+from .misc import get_site_from_request
 
 
 def get_template_names(menu_tag, request, override):
