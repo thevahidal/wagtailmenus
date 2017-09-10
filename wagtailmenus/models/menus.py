@@ -782,7 +782,7 @@ class MenuWithMenuItems(ClusterableModel, MultiLevelMenu):
     def render_init(self, *args, **options):
         super(MenuWithMenuItems, self).render_init(*args, **options)
         self.set_max_levels(options['max_levels'])
-        self.set_max_levels(options['use_specific'])
+        self.set_use_specific(options['use_specific'])
 
 
 # ########################################################
