@@ -1,4 +1,5 @@
 from __future__ import absolute_import, unicode_literals
+import warnings
 
 from collections import defaultdict, namedtuple
 
@@ -18,7 +19,12 @@ from wagtail.wagtailcore.models import Page
 
 from .. import app_settings
 from ..forms import FlatMenuAdminForm
+from ..utils.deprecation import (
+    RemovedInWagtailMenus26Warning, RemovedInWagtailMenus27Warning)
+from ..utils.inspection import accepts_kwarg
 from ..utils.misc import get_site_from_request
+from .menuitems import MenuItem
+from .pages import AbstractLinkPage
 
 
 # ########################################################
@@ -35,6 +41,48 @@ class Menu(object):
     request = None
     menu_type = ''  # provided to hook methods
     menu_short_name = ''  # used to find templates
+    add_self_to_context = True
+    sub_menu_class = None
+
+    @classmethod
+    def get_sub_menu_class(cls):
+        return cls.sub_menu_class or SubMenu
+
+    @classmethod
+    def format_contextual_vals(cls, context, menu_tag_name):
+        ContextualVals = namedtuple('ContextualVals', (
+            'current_site', 'current_level', 'original_menu_tag',
+            'current_page', 'current_section_root_page',
+            'current_page_ancestor_ids', 'template_engine'
+        ))
+        context_processor_vals = context.get('wagtailmenus_vals', {})
+        return ContextualVals(
+            get_site_from_request(context['request']),
+            context.get('current_level', 0) + 1,
+            context.get('original_menu_tag', menu_tag_name),
+            context_processor_vals.get('current_page'),
+            context_processor_vals.get('section_root'),
+            context_processor_vals.get('current_page_ancestor_ids', ()),
+            context.template.engine,
+        )
+
+    @classmethod
+    def format_option_vals(cls, options):
+        OptionVals = namedtuple('OptionVals', (
+            'max_levels', 'use_specific', 'apply_active_classes',
+            'allow_repeating_parents', 'use_absolute_page_urls',
+            'template_name', 'sub_menu_template_name', 'extra'
+        ))
+        return OptionVals(
+            options.pop('max_levels'),
+            options.pop('use_specific'),
+            options.pop('apply_active_classes'),
+            options.pop('allow_repeating_parents'),
+            options.pop('use_absolute_page_urls'),
+            options.pop('template_name', ''),
+            options.pop('sub_menu_template_name', ''),
+            options  # anything left over will be stored as 'extra'
+        )
 
     def clear_page_cache(self):
         try:
@@ -98,21 +146,34 @@ class Menu(object):
         make use of it in subclasses
         """
         self.request = request
+        warning_msg = (
+            "The 'set_request' method is deprecated in favour of the storing "
+            "the request alongside other values in 'render_init' View the "
+            "2.5 release notes for more info: "
+            "http://wagtailmenus.readthedocs.io/en/stable/releases/2.5.0.html"
+        )
+        warnings.warn(warning_msg, RemovedInWagtailMenus27Warning)
 
-    @property
-    def pages_for_display(self):
+    def get_pages_for_display(self):
         raise NotImplementedError(
-            "Subclasses of 'Menu' must define their own 'pages_for_display' "
-            "method")
+            "Subclasses of 'Menu' must define their own "
+            "'get_pages_for_display' method")
 
     @cached_property
-    def page_children_dict(self):
+    def pages_for_display(self):
+        return self.get_pages_for_display()
+
+    def get_page_children_dict(self):
         """Returns a dictionary of lists, where the keys are 'path' values for
         pages, and the value is a list of children pages for that page."""
         children_dict = defaultdict(list)
         for page in self.pages_for_display:
             children_dict[page.path[:-page.steplen]].append(page)
         return children_dict
+
+    @cached_property
+    def page_children_dict(self):
+        return self.get_page_children_dict()
 
     def get_children_for_page(self, page):
         """Return a list of relevant child pages for a given page."""
@@ -123,71 +184,38 @@ class Menu(object):
         child pages."""
         return page.path in self.page_children_dict
 
-    def render(self, context, menu_tag, **kwargs):
-        self.pre_render_operations(context, menu_tag, **kwargs)
+    def render(self, menu_tag_name, context, **options):
+        self.render_init(menu_tag_name, context, **options)
         return self.render_to_template(
-            self.get_context_data(), self.get_template()
+            self.get_context_data(),
+            self.get_template(),
         )
 
-    def pre_render_operations(self, context, menu_tag, **kwargs):
+    def render_init(self, menu_tag_name, context, **options):
         self._parent_context = context
-        self.set_contextual_vals(context, menu_tag)
-        self.set_render_option_vals(kwargs)
+        self.request = context['request']
+        self.contextual_vals = self.format_contextual_vals(context,
+                                                           menu_tag_name)
+        self.option_vals = self.format_option_vals(options)
+        # TODO: Remove the below in version 2.7
         self.set_request(context['request'])
-        if 'max_levels' in kwargs:
-            self.set_max_levels(kwargs['max_levels'])
-        if 'use_specific' in kwargs:
-            self.set_use_specific(kwargs['use_specific'])
-
-    def set_contextual_vals(self, context, menu_tag, **extra):
-        ContextualVals = namedtuple('ContextualVals', (
-            'current_level', 'current_site', 'original_menu_tag',
-            'current_page', 'current_section_root_page',
-            'current_page_ancestor_ids', 'template_engine', 'extra'
-        ))
-        current_site = get_site_from_request(context['request'])
-        context_processor_vals = context.get('wagtailmenus_vals', {})
-        self.contextual_vals = ContextualVals(
-            self.get_current_level(),
-            current_site,
-            menu_tag,
-            context_processor_vals.get('current_page'),
-            context_processor_vals.get('section_root'),
-            context_processor_vals.get('current_page_ancestor_ids', ()),
-            context.template.engine,
-            extra
-        )
-
-    def get_current_level(self):
-        return 1
-
-    def set_render_option_vals(self, option_vals):
-        RenderOptionVals = namedtuple('RenderOptionVals', (
-            'max_levels', 'use_specific', 'apply_active_classes',
-            'allow_repeating_parents', 'use_absolute_page_urls',
-            'template_name', 'sub_menu_template_name', 'extra'
-        ))
-        self.render_option_vals = RenderOptionVals(
-            option_vals.pop('max_levels'),
-            option_vals.pop('use_specific'),
-            option_vals.pop('apply_active_classes'),
-            option_vals.pop('allow_repeating_parents'),
-            option_vals.pop('use_absolute_page_urls'),
-            option_vals.pop('template_name'),
-            option_vals.pop('sub_menu_template_name'),
-            option_vals
-        )
 
     def get_context_data(self, **kwargs):
         data = self._parent_context.flatten()
-        data.update(self.contextual_vals._as_dict())
-        data.update(self.render_option_vals._asdict())
+        data.update(self.contextual_vals._asdict())
+        data.update(self.option_vals._asdict())
         data.update({
-            'menu_instance': self,
-            'menu_items': self.get_primed_menu_items(),
             'section_root': data['current_section_root_page'],
             'current_ancestor_ids': data['current_page_ancestor_ids'],
+            'sub_menu_class': self.get_sub_menu_class(),
         })
+        if self.add_self_to_context:
+            data.update({
+                'menu_instance': self,
+                self.menu_type: self,
+            })
+        if 'menu_items' not in kwargs:
+            data['menu_items'] = self.get_primed_menu_items()
         data.update(kwargs)
         return data
 
@@ -202,41 +230,45 @@ class Menu(object):
         return items
 
     def get_menu_item_modify_hook_kwargs(self):
-        kwargs = self.contextual_vals._asdict()
-        kwargs.update(self.render_option_vals._as_dict())
-        kwargs.update({
-            'parent_page': None,
+        cvals = self.contextual_vals
+        opts = self.option_vals
+        return {
             'menu_instance': self,
-        })
-        kwargs.pop('template_name')
-        kwargs.pop('sub_menu_template')
-        kwargs.pop('template_engine')
-        kwargs.pop('extra')
-        return kwargs
+            'request': self.request,
+            'parent_page': self.root_page,
+            'current_site': cvals.current_site,
+            'original_menu_tag': cvals.original_menu_tag,
+            'current_page': cvals.current_page,
+            'current_page_ancestor_ids': cvals.current_page_ancestor_ids,
+            'current_level': cvals.current_level,
+            'max_levels': self.max_levels,
+            'use_specific': self.max_levels,
+            'apply_active_classes': opts.apply_active_classes,
+            'allow_repeating_parents': opts.allow_repeating_parents,
+            'use_absolute_page_urls': opts.use_absolute_page_urls,
+        }
 
     def get_raw_menu_items(self):
         raise NotImplementedError("Subclasses of 'Menu' must define their own "
                                   "'get_raw_menu_items' method")
 
-    def modify_menu_items(self):
-        raise NotImplementedError("Subclasses of 'Menu' must define their own "
-                                  "'modify_menu_items' method")
+    def modify_menu_items(self, menu_items):
+        return menu_items
 
     def prime_menu_items(self, menu_items):
         """
         Prepare a list of `MenuItem` or `Page` objects for rendering to a menu
         template.
         """
-        from .menuitems import MenuItem
-        from .pages import AbstractLinkPage
-        current_site = self.contextual_vals.current_site
-        current_page = self.contextual_vals.current_page
-        current_ancestor_ids = self.contextual_vals.current_page_ancestor_ids
-        original_menu_tag = self.contextual_vals.original_menu_tag
-        apply_active_classes = self.render_option_vals.apply_active_classes
-        allow_repeating_parents = self.render_option_vals.allow_repeating_parents
-        use_absolute_page_urls = self.render_option_vals.use_absolute_page_urls
-        stop_at_this_level = (self.get_current_level() >= self.max_levels)
+        cvals = self.contextual_vals
+        current_site = cvals.current_site
+        current_page = cvals.current_page
+        opts = self.option_vals
+
+        active_css_class = app_settings.ACTIVE_CLASS
+        ancestor_css_class = app_settings.ACTIVE_ANCESTOR_CLASS
+
+        stop_at_this_level = (cvals.current_level >= self.max_levels)
         primed_menu_items = []
 
         for item in menu_items:
@@ -260,11 +292,11 @@ class Menu(object):
                 if item.show_in_menus_custom(
                     current_site,
                     self,
-                    self.contextual_data.original_menu_tag
+                    cvals.original_menu_tag
                 ):
                     setattr(item, 'active_class', item.extra_classes)
                     setattr(item, 'text', item.menu_text(self.request))
-                    if self.render_option_vals.use_absolute_page_urls:
+                    if self.option_vals.use_absolute_page_urls:
                         url = item.get_full_url(request=self.request)
                     else:
                         url = item.relative_url(current_site, self.request)
@@ -311,11 +343,11 @@ class Menu(object):
                         to that.
                         """
                         has_children_in_menu = page.has_submenu_items(
-                            current_page=current_page,
-                            allow_repeating_parents=allow_repeating_parents,
-                            original_menu_tag=original_menu_tag,
                             menu_instance=self,
                             request=self.request,
+                            allow_repeating_parents=opts.allow_repeating_parents,
+                            current_page=cvals.current_page,
+                            original_menu_tag=cvals.original_menu_tag,
                         )
 
                     else:
@@ -323,22 +355,23 @@ class Menu(object):
 
                 setattr(item, 'has_children_in_menu', has_children_in_menu)
 
-                if apply_active_classes:
+                if opts.apply_active_classes:
                     active_class = ''
                     if(current_page and page.pk == current_page.pk):
                         # This is the current page, so the menu item should
                         # probably have the 'active' class
-                        active_class = app_settings.ACTIVE_CLASS
+                        active_class = active_css_class
                         if (
-                            allow_repeating_parents and self.use_specific and
+                            opts.allow_repeating_parents and
+                            self.use_specific and
                             has_children_in_menu
                         ):
                             if type(page) is Page:
                                 page = page.specific
                             if getattr(page, 'repeat_in_subnav', False):
-                                active_class = app_settings.ACTIVE_ANCESTOR_CLASS
-                    elif page.pk in current_ancestor_ids:
-                        active_class = app_settings.ACTIVE_ANCESTOR_CLASS
+                                active_class = ancestor_css_class
+                    elif page.pk in cvals.current_page_ancestor_ids:
+                        active_class = ancestor_css_class
                     setattr(item, 'active_class', active_class)
 
             elif page is None:
@@ -347,7 +380,7 @@ class Menu(object):
                 'active' if the URL matches the request path.
                 """
                 request_path = self.request.path
-                if apply_active_classes and item.link_url == request_path:
+                if opts.apply_active_classes and item.link_url == request_path:
                     setattr(item, 'active_class', app_settings.ACTIVE_CLASS)
 
             # In case the specific page was fetched during the above operations
@@ -355,7 +388,7 @@ class Menu(object):
             if menuitem and page:
                 menuitem.link_page = page
 
-            if use_absolute_page_urls:
+            if opts.use_absolute_page_urls:
                 # Pages only have `get_full_url` from Wagtail 1.11 onwards
                 if hasattr(item, 'get_full_url'):
                     url = item.get_full_url(request=self.request)
@@ -374,9 +407,11 @@ class Menu(object):
 
     def get_template(self):
         e = self.contextual_vals.template_engine
-        specified = self.render_option_vals.template_name
+        specified = self.option_vals.template_name
         if specified:
             return e.get_template(specified)
+        if hasattr(self, 'template_name'):
+            return e.get_template(self.template_name)
         return e.select_template(self.get_template_names())
 
     def get_template_names(self):
@@ -384,28 +419,6 @@ class Menu(object):
         rendering an instance of this class. The list should be ordered
         with most specific names first, since the first template found to
         exist will be used for rendering"""
-        raise NotImplementedError(
-            "Subclasses of 'Menu' must define their own 'get_template_names' "
-            "implementation")
-
-    @classmethod
-    def get_least_specific_template_name(cls):
-        """Return a template name to be added to the end of the list returned
-        by 'get_template_names'. This is defined as a separate method because
-        template lists tend to follow a similar pattern, except the last
-        item, which typically comes from a setting"""
-        raise NotImplementedError(
-            "Subclasses of 'Menu' must define their own "
-            "'get_least_specific_template_name' implementation")
-
-    def render_to_template(self, data, template):
-        data['current_template'] = template.name
-        return template.render(Context(data))
-
-
-class MultiLevelMenu(Menu):
-
-    def get_template_names(self):
         site = self.contextual_vals.current_site
         template_names = []
         menu_str = self.menu_short_name
@@ -415,17 +428,43 @@ class MultiLevelMenu(Menu):
                 "menus/%s/%s/menu.html" % (hostname, menu_str),
                 "menus/%s/%s_menu.html" % (hostname, menu_str),
             ])
-        template_names.extend([
-            "menus/%s/menu.html" % menu_str,
-            self.get_least_specific_template_name(),
-        ])
+        template_names.append("menus/%s/menu.html" % menu_str)
+        lstn = self.get_least_specific_template_name()
+        if lstn:
+            template_names.append(lstn)
         return template_names
+
+    @classmethod
+    def get_least_specific_template_name(cls):
+        """Return a template name to be added to the end of the list returned
+        by 'get_template_names'. This is defined as a separate method because
+        template lists tend to follow a similar pattern, except the last
+        item, which typically comes from a setting"""
+        return
+
+    def render_to_template(self, context_data, template):
+        context_data['current_template'] = template.name
+        return template.render(Context(context_data))
+
+
+class MultiLevelMenu(Menu):
+
+    def get_context_data(self, **kwargs):
+        smt = self.get_sub_menu_template()
+        data = {
+            'sub_menu_template_instance': smt,
+            'sub_menu_template': smt.name,
+        }
+        data.update(kwargs)
+        return super(MultiLevelMenu, self).get_context_data(**data)
 
     def get_sub_menu_template(self):
         e = self.contextual_vals.template_engine
-        specified = self.render_option_vals.sub_menu_template_name
+        specified = self.option_vals.sub_menu_template_name
         if specified:
             return e.get_template(specified)
+        if hasattr(self, 'sub_menu_template'):
+            return e.get_template(self.sub_menu_template)
         return e.select_template(self.get_sub_menu_template_names())
 
     def get_sub_menu_template_names(self):
@@ -456,6 +495,7 @@ class MenuFromRootPage(MultiLevelMenu):
     consist solely of ancestors of that page."""
 
     root_page = None
+    root_page_context_name = 'root_page'
 
     def __init__(self, root_page, max_levels, use_specific):
         self.root_page = root_page
@@ -478,10 +518,6 @@ class MenuFromRootPage(MultiLevelMenu):
 
         return pages
 
-    @cached_property
-    def pages_for_display(self):
-        return self.get_pages_for_display()
-
     def get_children_for_page(self, page):
         """Return a list of relevant child pages for a given page."""
         if self.max_levels == 1:
@@ -490,30 +526,145 @@ class MenuFromRootPage(MultiLevelMenu):
             return self.pages_for_display
         return super(MenuFromRootPage, self).get_children_for_page(page)
 
+    def get_raw_menu_items(self):
+        return list(self.get_children_for_page(self.root_page))
+
+    def get_context_data(self, **kwargs):
+        if (
+            self.root_page and self.use_specific and
+            type(self.root_page) is not Page and
+            hasattr(self.root_page, 'specific_class') and
+            hasattr(self.root_page.specific_class, 'modify_submenu_items')
+        ):
+            self.root_page = self.root_page.specific
+        data = {self.root_page_context_name: self.root_page}
+        data.update(**kwargs)
+        return super(MenuFromRootPage, self).get_context_data(**data)
+
+    def modify_menu_items(self, menu_items):
+        # If root_page has a `modify_submenu_items` method, send menu_items
+        # list to that method for further modification
+        root = self.root_page
+        if not self.use_specific or not hasattr(root, 'modify_submenu_items'):
+            return menu_items
+
+        cvals = self.contextual_vals
+        opts = self.option_vals
+        kwargs = {
+            'request': self.request,
+            'menu_instance': self,
+            'original_menu_tag': cvals.original_menu_tag,
+            'current_site': cvals.current_site,
+            'current_page': cvals.current_page,
+            'current_ancestor_ids': cvals.current_page_ancestor_ids,
+            'allow_repeating_parents': opts.allow_repeating_parents,
+            'apply_active_classes': opts.apply_active_classes,
+            'use_absolute_page_urls': opts.use_absolute_page_urls,
+        }
+        # Backwards compatibility for 'modify_submenu_items' methods that
+        # don't accept a 'use_absolute_page_urls' kwarg
+        if not accepts_kwarg(
+            root.modify_submenu_items, 'use_absolute_page_urls'
+        ):
+            kwargs.pop('use_absolute_page_urls')
+            warning_msg = (
+                "The 'modify_submenu_items' method on '%s' should be "
+                "updated to accept a 'use_absolute_page_urls' keyword "
+                "argument. View the 2.4 release notes for more info: "
+                "https://github.com/rkhleics/wagtailmenus/releases/tag/v.2.4.0"
+                % root.__class__.__name__,
+            )
+            warnings.warn(warning_msg, RemovedInWagtailMenus26Warning)
+
+        # Call `modify_submenu_items` using the above kwargs dict
+        return root.modify_submenu_items(menu_items, **kwargs)
+
 
 class SectionMenu(MenuFromRootPage):
     menu_type = 'section_menu'  # provided to hook methods
     menu_short_name = 'section'  # used to find templates
-
-    def get_raw_menu_items(self):
-        return self.get_children_for_page(
-            self.contextual_vals.current_section_root_page)
+    root_page_context_name = 'parent_page'
 
     @classmethod
     def get_least_specific_template_name(cls):
         return app_settings.DEFAULT_SECTION_MENU_TEMPLATE
 
+    def render(self, *args, **kwargs):
+        self.render_init(*args, **kwargs)
+        if not self.contextual_vals.current_section_root_page:
+            return ''
+        self.root_page = self.contextual_vals.current_section_root_page
+        return self.render_to_template(
+            self.get_context_data(),
+            self.get_template(),
+        )
+
+    def get_context_data(self, **kwargs):
+        section_root = self.root_page
+        cvals = self.contextual_vals
+        current_page = cvals.current_page
+        active_css_class = app_settings.ACTIVE_CLASS
+        ancestor_css_class = app_settings.ACTIVE_ANCESTOR_CLASS
+        opts = self.option_vals
+        data = super(SectionMenu, self).get_context_data()
+        data['show_section_root'] = opts.extra['show_section_root']
+
+        if 'section_root' not in kwargs and data['show_section_root']:
+            section_root.text = getattr(
+                section_root, app_settings.PAGE_FIELD_FOR_MENU_ITEM_TEXT,
+                section_root.title
+            )
+            if opts.use_absolute_page_urls:
+                if hasattr(section_root, 'get_full_url'):
+                    url = section_root.get_full_url(request=self.request)
+                else:
+                    url = section_root.full_url
+            else:
+                url = section_root.relative_url(cvals.current_site)
+            section_root.href = url
+
+            if opts.apply_active_classes:
+                active_class = ancestor_css_class
+                if current_page and section_root.pk == current_page.pk:
+                    # `section_root` is the current page, so should probably
+                    # have the 'active' class
+                    active_class = active_css_class
+                    menu_items = data['menu_items']
+                    # Unless there's a 'repeated item' in menu_items that
+                    # already has the 'active' class
+                    if(
+                        opts.allow_repeating_parents and self.use_specific
+                    ):
+                        for item in menu_items:
+                            css_class = getattr(item, 'active_class', '')
+                            if(
+                                css_class == active_css_class and
+                                getattr(item, 'pk', 0) == section_root.pk
+                            ):
+                                active_class = ancestor_css_class
+                section_root.active_class = active_class
+
+        data['section_root'] = section_root
+        data.update(**kwargs)
+        return data
+
+
+class SubMenu(MenuFromRootPage):
+    menu_type = 'sub_menu'  # provided to hook methods
+    menu_short_name = 'sub'  # used to find templates
+    add_self_to_context = False
+
+    def render(self, template, *args, **kwargs):
+        self.template = template
+        return super(SubMenu, self).render(*args, **kwargs)
+
+    def get_template(self):
+        return self.template
+
 
 class ChildrenMenu(MenuFromRootPage):
     menu_type = 'children_menu'  # provided to hook methods
     menu_short_name = 'children'  # used to find templates
-
-    def render(self, context, menu_tag, **kwargs):
-        self.parent_page = kwargs.pop('parent_page')
-        return super(ChildrenMenu, self).render(context, menu_tag, **kwargs)
-
-    def get_raw_menu_items(self):
-        return self.get_children_for_page(self.parent_page)
 
     @classmethod
     def get_least_specific_template_name(cls):
@@ -630,7 +781,12 @@ class MenuWithMenuItems(ClusterableModel, MultiLevelMenu):
         item_manager.bulk_create(item_list)
 
     def get_raw_menu_items(self):
-        return self.top_level_items
+        return list(self.top_level_items)
+
+    def render_init(self, *args, **options):
+        super(MenuWithMenuItems, self).render_init(*args, **options)
+        self.set_max_levels(options['max_levels'])
+        self.set_max_levels(options['use_specific'])
 
 
 # ########################################################
@@ -835,11 +991,12 @@ class AbstractFlatMenu(MenuWithMenuItems):
                 )
             )
 
-    def get_template(self, context, template_name='', site=None):
-        e = context.template.engine
-        if template_name:
-            return e.get_template(template_name)
-        return e.select_template(self.get_template_names(site))
+    def get_context_data(self, **kwargs):
+        data = {
+            'show_menu_heading': self.option_vals.extra['show_menu_heading'],
+        }
+        data.update(kwargs)
+        return super(AbstractFlatMenu, self).get_context_data(**data)
 
     def get_template_names(self):
         """Returns a list of template names to search for when rendering a
@@ -864,14 +1021,17 @@ class AbstractFlatMenu(MenuWithMenuItems):
             "menus/%s.html" % self.handle,
             "menus/flat/default.html",
             "menus/flat/menu.html",
-            self.get_fallback_template_name(),
         ])
+        lstn = self.get_least_specific_template_name()
+        if lstn:
+            template_names.append(lstn)
         return template_names
 
-    def get_sub_menu_template_names(self, site=None):
+    def get_sub_menu_template_names(self):
         """Returns a list of template names to search for when rendering a
         a sub menu for a specific flat menu object (making use of self.handle)
         """
+        site = self.contextual_vals.current_site
         template_names = []
         if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS and site:
             hn = site.hostname
