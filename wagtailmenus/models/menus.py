@@ -531,7 +531,7 @@ class MenuFromRootPage(MultiLevelMenu):
 
     def get_context_data(self, **kwargs):
         if (
-            self.root_page and self.use_specific and
+            self.use_specific and self.root_page and
             type(self.root_page) is not Page and
             hasattr(self.root_page, 'specific_class') and
             hasattr(self.root_page.specific_class, 'modify_submenu_items')
@@ -991,6 +991,7 @@ class AbstractFlatMenu(MenuWithMenuItems):
     def get_context_data(self, **kwargs):
         data = {
             'show_menu_heading': self.option_vals.extra['show_menu_heading'],
+            'menu_handle': self.handle,
         }
         data.update(kwargs)
         return super(AbstractFlatMenu, self).get_context_data(**data)
