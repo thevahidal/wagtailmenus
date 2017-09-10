@@ -757,10 +757,6 @@ class MenuWithMenuItems(ClusterableModel, MultiLevelMenu):
 
         return all_pages
 
-    @cached_property
-    def pages_for_display(self):
-        return self.get_pages_for_display()
-
     def get_menu_items_manager(self):
         raise NotImplementedError(
             "Subclasses of 'MenuWithMenuItems' must define their own "
