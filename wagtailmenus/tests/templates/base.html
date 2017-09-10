@@ -55,12 +55,12 @@
         <footer role="contentinfo">
             <div class="container">
                 <div id="nav-footer">
-                    {% flat_menu 'footer' apply_active_classes=True %}
+                    {% flat_menu 'footer' apply_active_classes=True show_menu_heading=True %}
                     {% flat_menu 'made-up-menu' %}
                 </div>
 
                 <div id="nav-footer-absolute-urls">
-                    {% flat_menu 'footer' use_absolute_page_urls=True %}
+                    {% flat_menu 'footer' show_menu_heading=True use_absolute_page_urls=True %}
                 </div>
                 <p class="rkh"><a href="http://www.rkh.co.uk/" target="_blank" title="Web design and development, Leicester">Website by Rock Kitchen Harris</a></p>
             </div>

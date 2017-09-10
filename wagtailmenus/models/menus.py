@@ -988,10 +988,17 @@ class AbstractFlatMenu(MenuWithMenuItems):
                 )
             )
 
+    def get_heading(self):
+        return self.heading
+
     def get_context_data(self, **kwargs):
+        show_heading = self.option_vals.extra['show_menu_heading']
+        heading = self.get_heading()
         data = {
-            'show_menu_heading': self.option_vals.extra['show_menu_heading'],
+            'heading': heading,
+            'menu_heading': heading if show_heading else '',
             'menu_handle': self.handle,
+            'show_menu_heading': show_heading,
         }
         data.update(kwargs)
         return super(AbstractFlatMenu, self).get_context_data(**data)
