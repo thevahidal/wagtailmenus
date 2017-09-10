@@ -326,7 +326,7 @@ Below is a full list of arguments passed that are passed to the above hooks, and
 ``current_page``
     A Wagtail ``Page`` instance, indicating what wagtailmenus beleives to be the page that is currently being viewed / requested by a user. This might be ``None`` if you're using standard additional views to provide functionality at urls that don't map to a ``Page`` in Wagtail.
 
-``current_ancestor_ids``
+``current_page_ancestor_ids``
     A list of ids of ``Page`` instances that are an 'ancestor' of ``current_page``.
 
 ``use_specific``

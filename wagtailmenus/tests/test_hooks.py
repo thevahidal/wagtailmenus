@@ -15,7 +15,7 @@ class TestHooks(TestCase):
         def modify_menu_items(
             menu_items, request, parent_page, original_menu_tag, menu_instance,
             current_level, max_levels, current_site, current_page,
-            current_ancestor_ids, use_specific, apply_active_classes,
+            current_page_ancestor_ids, use_specific, apply_active_classes,
             allow_repeating_parents, use_absolute_page_urls
         ):
             if original_menu_tag == 'main_menu' and current_level == 1:
@@ -48,7 +48,7 @@ class TestHooks(TestCase):
         def modify_menu_items(
             menu_items, request, parent_page, original_menu_tag, menu_instance,
             current_level, max_levels, current_site, current_page,
-            current_ancestor_ids, use_specific, apply_active_classes,
+            current_page_ancestor_ids, use_specific, apply_active_classes,
             allow_repeating_parents, use_absolute_page_urls
         ):
             if original_menu_tag == 'section_menu' and current_level == 1:
