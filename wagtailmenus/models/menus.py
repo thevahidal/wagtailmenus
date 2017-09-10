@@ -583,7 +583,6 @@ class MenuFromRootPage(MultiLevelMenu):
 class SectionMenu(MenuFromRootPage):
     menu_type = 'section_menu'  # provided to hook methods
     menu_short_name = 'section'  # used to find templates
-    root_page_context_name = 'parent_page'
 
     @classmethod
     def get_least_specific_template_name(cls):
@@ -653,6 +652,7 @@ class SubMenu(MenuFromRootPage):
     menu_type = 'sub_menu'  # provided to hook methods
     menu_short_name = 'sub'  # used to find templates
     add_self_to_context = False
+    root_page_context_name = 'parent_page'
 
     def render(self, template, *args, **kwargs):
         self.template = template
@@ -665,6 +665,7 @@ class SubMenu(MenuFromRootPage):
 class ChildrenMenu(MenuFromRootPage):
     menu_type = 'children_menu'  # provided to hook methods
     menu_short_name = 'children'  # used to find templates
+    root_page_context_name = 'parent_page'
 
     @classmethod
     def get_least_specific_template_name(cls):
