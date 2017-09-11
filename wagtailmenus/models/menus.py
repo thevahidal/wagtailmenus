@@ -164,11 +164,11 @@ class Menu(object):
     def pages_for_display(self):
         return self.get_pages_for_display()
 
-    def get_page_children_dict(self):
+    def get_page_children_dict(self, page_qs=None):
         """Returns a dictionary of lists, where the keys are 'path' values for
         pages, and the value is a list of children pages for that page."""
         children_dict = defaultdict(list)
-        for page in self.pages_for_display:
+        for page in page_qs or self.pages_for_display:
             children_dict[page.path[:-page.steplen]].append(page)
         return children_dict
 
@@ -535,17 +535,7 @@ class MenuFromRootPage(MultiLevelMenu):
         return super(MenuFromRootPage, self).get_children_for_page(page)
 
     def get_top_level_items(self):
-        if(
-            self.use_specific == app_settings.USE_SPECIFIC_TOP_LEVEL and
-            self.contextual_vals.current_level == 1
-        ):
-            return self.get_pages_for_display().filter(
-                depth=self.root_page.depth + 1).specific()
         return list(self.get_children_for_page(self.root_page))
-
-    @cached_property
-    def top_level_items(self):
-        return self.get_top_level_items()
 
     def get_context_data(self, **kwargs):
         if (
