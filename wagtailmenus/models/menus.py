@@ -221,7 +221,7 @@ class Menu(object):
         return data
 
     def get_primed_menu_items(self):
-        items = self.top_level_items
+        items = self.get_raw_menu_items()
         hook_kwargs = self.get_menu_item_modify_hook_kwargs()
         for hook in hooks.get_hooks('menus_modify_raw_menu_items'):
             items = hook(items, **hook_kwargs)
@@ -256,6 +256,9 @@ class Menu(object):
     @cached_property
     def top_level_items(self):
         return self.get_top_level_items()
+
+    def get_raw_menu_items(self):
+        return self.top_level_items
 
     def modify_menu_items(self, menu_items):
         return menu_items
@@ -664,20 +667,6 @@ class SectionMenu(MenuFromRootPage):
         return data
 
 
-class SubMenu(MenuFromRootPage):
-    menu_type = 'sub_menu'  # provided to hook methods
-    menu_short_name = 'sub'  # used to find templates
-    add_self_to_context = False
-    root_page_context_name = 'parent_page'
-
-    def render(self, template, *args, **kwargs):
-        self.template = template
-        return super(SubMenu, self).render(*args, **kwargs)
-
-    def get_template(self):
-        return self.template
-
-
 class ChildrenMenu(MenuFromRootPage):
     menu_type = 'children_menu'  # provided to hook methods
     menu_short_name = 'children'  # used to find templates
@@ -687,6 +676,24 @@ class ChildrenMenu(MenuFromRootPage):
     @classmethod
     def get_least_specific_template_name(cls):
         return app_settings.DEFAULT_CHILDREN_MENU_TEMPLATE
+
+
+class SubMenu(MenuFromRootPage):
+    menu_type = 'sub_menu'  # provided to hook methods
+    menu_short_name = 'sub'  # used to find templates
+    add_self_to_context = False
+    root_page_context_name = 'parent_page'
+
+    def render(self, original_menu, template, *args, **kwargs):
+        self.original_menu = original_menu
+        self.template = template
+        return super(SubMenu, self).render(*args, **kwargs)
+
+    def get_template(self):
+        return self.template
+
+    def get_raw_menu_items(self):
+        return self.original_menu.get_children_for_page(self.root_page)
 
 
 class MenuWithMenuItems(ClusterableModel, MultiLevelMenu):

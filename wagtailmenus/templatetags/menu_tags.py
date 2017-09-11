@@ -202,7 +202,7 @@ def sub_menu(
     menu_class = context.get('sub_menu_class') or SubMenu
     menu = menu_class(parent_page, max_levels, use_specific)
     return menu.render(
-        template, 'sub_menu', context,
+        context.get('menu_instance'), template, 'sub_menu', context,
         max_levels=max_levels,
         use_specific=use_specific,
         apply_active_classes=apply_active_classes,
