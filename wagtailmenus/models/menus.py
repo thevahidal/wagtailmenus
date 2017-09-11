@@ -221,7 +221,7 @@ class Menu(object):
         return data
 
     def get_primed_menu_items(self):
-        items = self.get_raw_menu_items()
+        items = self.top_level_items
         hook_kwargs = self.get_menu_item_modify_hook_kwargs()
         for hook in hooks.get_hooks('menus_modify_raw_menu_items'):
             items = hook(items, **hook_kwargs)
@@ -249,9 +249,13 @@ class Menu(object):
             'use_absolute_page_urls': opts.use_absolute_page_urls,
         }
 
-    def get_raw_menu_items(self):
+    def get_top_level_items(self):
         raise NotImplementedError("Subclasses of 'Menu' must define their own "
-                                  "'get_raw_menu_items' method")
+                                  "'get_top_level_items' method")
+
+    @cached_property
+    def top_level_items(self):
+        return self.get_top_level_items()
 
     def modify_menu_items(self, menu_items):
         return menu_items
@@ -514,7 +518,7 @@ class MenuFromRootPage(MultiLevelMenu):
         )
 
         # Return 'specific' page instances if required
-        if self.use_specific == app_settings.USE_SPECIFIC_ALWAYS:
+        if(self.use_specific == app_settings.USE_SPECIFIC_ALWAYS):
             return pages.specific()
 
         return pages
@@ -527,8 +531,18 @@ class MenuFromRootPage(MultiLevelMenu):
             return self.pages_for_display
         return super(MenuFromRootPage, self).get_children_for_page(page)
 
-    def get_raw_menu_items(self):
+    def get_top_level_items(self):
+        if(
+            self.use_specific == app_settings.USE_SPECIFIC_TOP_LEVEL and
+            self.contextual_vals.current_level == 1
+        ):
+            return self.get_pages_for_display().filter(
+                depth=self.root_page.depth + 1).specific()
         return list(self.get_children_for_page(self.root_page))
+
+    @cached_property
+    def top_level_items(self):
+        return self.get_top_level_items()
 
     def get_context_data(self, **kwargs):
         if (
@@ -779,9 +793,6 @@ class MenuWithMenuItems(ClusterableModel, MultiLevelMenu):
             ))
             i += 1
         item_manager.bulk_create(item_list)
-
-    def get_raw_menu_items(self):
-        return list(self.top_level_items)
 
     def render_init(self, *args, **options):
         super(MenuWithMenuItems, self).render_init(*args, **options)
