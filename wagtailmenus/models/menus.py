@@ -42,6 +42,7 @@ class Menu(object):
     menu_type = ''  # provided to hook methods
     menu_short_name = ''  # used to find templates
     add_self_to_context = True
+    self_context_var_name = 'menu'
     sub_menu_class = None
 
     @classmethod
@@ -212,7 +213,7 @@ class Menu(object):
         if self.add_self_to_context:
             data.update({
                 'menu_instance': self,
-                self.menu_type: self,
+                self.self_context_var_name: self,
             })
         if 'menu_items' not in kwargs:
             data['menu_items'] = self.get_primed_menu_items()
@@ -583,6 +584,7 @@ class MenuFromRootPage(MultiLevelMenu):
 class SectionMenu(MenuFromRootPage):
     menu_type = 'section_menu'  # provided to hook methods
     menu_short_name = 'section'  # used to find templates
+    self_context_var_name = menu_type
 
     @classmethod
     def get_least_specific_template_name(cls):
@@ -666,6 +668,7 @@ class ChildrenMenu(MenuFromRootPage):
     menu_type = 'children_menu'  # provided to hook methods
     menu_short_name = 'children'  # used to find templates
     root_page_context_name = 'parent_page'
+    self_context_var_name = menu_type
 
     @classmethod
     def get_least_specific_template_name(cls):
@@ -794,6 +797,7 @@ class MenuWithMenuItems(ClusterableModel, MultiLevelMenu):
 class AbstractMainMenu(MenuWithMenuItems):
     menu_type = 'main_menu'  # provided to hook methods
     menu_short_name = 'main'  # used to find templates
+    self_context_var_name = menu_type
 
     site = models.OneToOneField(
         'wagtailcore.Site',
@@ -877,6 +881,7 @@ class AbstractMainMenu(MenuWithMenuItems):
 class AbstractFlatMenu(MenuWithMenuItems):
     menu_type = 'flat_menu'  # provided to hook methods
     menu_short_name = 'flat'  # used to find templates
+    self_context_var_name = 'matched_menu'
 
     site = models.ForeignKey(
         'wagtailcore.Site',
@@ -992,13 +997,10 @@ class AbstractFlatMenu(MenuWithMenuItems):
         return self.heading
 
     def get_context_data(self, **kwargs):
-        show_heading = self.option_vals.extra['show_menu_heading']
-        heading = self.get_heading()
         data = {
-            'heading': heading,
-            'menu_heading': heading if show_heading else '',
+            'menu_heading': self.get_heading(),
             'menu_handle': self.handle,
-            'show_menu_heading': show_heading,
+            'show_menu_heading': self.option_vals.extra['show_menu_heading'],
         }
         data.update(kwargs)
         return super(AbstractFlatMenu, self).get_context_data(**data)
