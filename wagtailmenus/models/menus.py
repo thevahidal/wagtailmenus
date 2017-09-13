@@ -674,10 +674,10 @@ class SubMenu(MenuFromRootPage):
     root_page_context_name = 'parent_page'
     self_context_var_name = menu_type
 
-    def render(self, original_menu, template, *args, **kwargs):
+    def __init__(self, original_menu, template, *args, **kwargs):
         self.original_menu = original_menu
         self.template = template
-        return super(SubMenu, self).render(*args, **kwargs)
+        super(MenuFromRootPage, self).__init__(*args, **kwargs)
 
     def get_template(self):
         return self.template
