@@ -677,7 +677,7 @@ class SubMenu(MenuFromRootPage):
     def __init__(self, original_menu, template, *args, **kwargs):
         self.original_menu = original_menu
         self.template = template
-        super(MenuFromRootPage, self).__init__(*args, **kwargs)
+        super(SubMenu, self).__init__(*args, **kwargs)
 
     def get_template(self):
         return self.template
