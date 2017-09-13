@@ -41,7 +41,6 @@ class Menu(object):
     request = None
     menu_type = ''  # provided to hook methods
     menu_short_name = ''  # used to find templates
-    add_self_to_context = True
     self_context_var_name = 'menu'
     sub_menu_class = None
 
@@ -210,7 +209,8 @@ class Menu(object):
             'current_ancestor_ids': data['current_page_ancestor_ids'],
             'sub_menu_class': self.get_sub_menu_class(),
         })
-        if self.add_self_to_context:
+        if self.contextual_vals.current_level == 1:
+            data['original_menu_instance'] = self
             data.update({
                 'menu_instance': self,
                 self.self_context_var_name: self,
@@ -671,8 +671,8 @@ class ChildrenMenu(MenuFromRootPage):
 class SubMenu(MenuFromRootPage):
     menu_type = 'sub_menu'  # provided to hook methods
     menu_short_name = 'sub'  # used to find templates
-    add_self_to_context = False
     root_page_context_name = 'parent_page'
+    self_context_var_name = menu_type
 
     def render(self, original_menu, template, *args, **kwargs):
         self.original_menu = original_menu
@@ -683,7 +683,9 @@ class SubMenu(MenuFromRootPage):
         return self.template
 
     def get_raw_menu_items(self):
-        return self.original_menu.get_children_for_page(self.root_page)
+        if self.original_menu:
+            return self.original_menu.get_children_for_page(self.root_page)
+        return self.get_children_for_page(self.root_page)
 
 
 class MenuWithMenuItems(ClusterableModel, MultiLevelMenu):
