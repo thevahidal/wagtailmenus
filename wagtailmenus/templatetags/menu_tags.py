@@ -33,7 +33,8 @@ def main_menu(
         max_levels = 1
 
     return menu.render(
-        'main_menu', context,
+        menu_tag_name='main_menu',
+        context=context,
         max_levels=max_levels,
         use_specific=use_specific,
         apply_active_classes=apply_active_classes,
@@ -70,7 +71,8 @@ def flat_menu(
         max_levels = 1
 
     return menu.render(
-        'flat_menu', context,
+        menu_tag_name='flat_menu',
+        context=context,
         max_levels=max_levels,
         use_specific=use_specific,
         apply_active_classes=apply_active_classes,
@@ -102,7 +104,8 @@ def section_menu(
     menu = app_settings.SECTION_MENU_CLASS(None, max_levels, use_specific)
 
     return menu.render(
-        'section_menu', context,
+        menu_tag_name='section_menu',
+        context=context,
         max_levels=max_levels,
         use_specific=use_specific,
         apply_active_classes=apply_active_classes,
@@ -139,7 +142,8 @@ def children_menu(
                                             use_specific)
 
     return menu.render(
-        'children_menu', context,
+        menu_tag_name='children_menu',
+        context=context,
         max_levels=max_levels,
         use_specific=use_specific,
         apply_active_classes=apply_active_classes,
@@ -199,10 +203,13 @@ def sub_menu(
     else:
         parent_page = menuitem_or_page.link_page
 
+    original_menu = context.get('original_menu_instance')
     menu_class = context.get('sub_menu_class') or SubMenu
-    menu = menu_class(parent_page, max_levels, use_specific)
+    menu = menu_class(
+        original_menu, template, parent_page, max_levels, use_specific)
     return menu.render(
-        context.get('menu_instance'), template, 'sub_menu', context,
+        menu_tag_name='sub_menu',
+        context=context,
         max_levels=max_levels,
         use_specific=use_specific,
         apply_active_classes=apply_active_classes,
