@@ -176,9 +176,9 @@ class Menu(object):
         """
         self.request = request
         warning_msg = (
-            "The 'set_request' method is deprecated in favour of the storing "
-            "the request alongside other values in 'render_init' View the "
-            "2.5 release notes for more info: "
+            "The 'set_request' method is deprecated in favour of the setting "
+            "request alongside other related attributes in "
+            "prepare_to_render(). See the 2.5 release notes for more info: "
             "http://wagtailmenus.readthedocs.io/en/stable/releases/2.5.0.html"
         )
         warnings.warn(warning_msg, RemovedInWagtailMenus27Warning)
@@ -644,6 +644,14 @@ class SectionMenu(MenuFromRootPage):
     @classmethod
     def get_least_specific_template_name(cls):
         return app_settings.DEFAULT_SECTION_MENU_TEMPLATE
+
+    def prepare_to_render(self, contextual_vals, option_vals):
+        super(SectionMenu, self).prepare_to_render(contextual_vals, option_vals)
+        if(
+            self.use_specific >= app_settings.USE_SPECIFIC_TOP_LEVEL and
+            type(self.root_page) is Page
+        ):
+            self.root_page = self.root_page.specific
 
     def get_context_data(self, **kwargs):
         section_root = self.root_page
