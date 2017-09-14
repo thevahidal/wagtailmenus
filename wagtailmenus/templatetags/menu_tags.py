@@ -9,7 +9,7 @@ from wagtailmenus import app_settings
 from ..models import AbstractLinkPage, MenuItem, SubMenu
 from ..utils.deprecation import (
     RemovedInWagtailMenus26Warning, RemovedInWagtailMenus27Warning)
-from ..utils.misc import get_site_from_request, validate_supplied_values
+from ..utils.misc import validate_supplied_values
 from wagtailmenus.utils.inspection import accepts_kwarg
 flat_menus_fbtdsm = app_settings.FLAT_MENUS_FALL_BACK_TO_DEFAULT_SITE_MENUS
 
@@ -25,15 +25,11 @@ def main_menu(
     validate_supplied_values('main_menu', max_levels=max_levels,
                              use_specific=use_specific)
 
-    # Find a matching menu
-    site = get_site_from_request(context['request'])
-    menu = app_settings.MAIN_MENU_MODEL_CLASS.get_for_site(site)
-
     if not show_multiple_levels:
         max_levels = 1
 
-    return menu.render(
-        menu_tag_name='main_menu',
+    return app_settings.MAIN_MENU_MODEL_CLASS.render_from_tag(
+        tag_name='main_menu',
         context=context,
         max_levels=max_levels,
         use_specific=use_specific,
@@ -57,22 +53,14 @@ def flat_menu(
     validate_supplied_values('flat_menu', max_levels=max_levels,
                              use_specific=use_specific)
 
-    # Find a matching menu
-    site = get_site_from_request(context['request'])
-    menu = app_settings.FLAT_MENU_MODEL_CLASS.get_for_site(
-        handle, site, fall_back_to_default_site_menus
-    )
-
-    if not menu:
-        # No menu was found matching `handle`, so gracefully render nothing.
-        return ''
-
     if not show_multiple_levels:
         max_levels = 1
 
-    return menu.render(
-        menu_tag_name='flat_menu',
+    return app_settings.FLAT_MENU_MODEL_CLASS.render_from_tag(
+        tag_name='flat_menu',
         context=context,
+        handle=handle,
+        fall_back_to_default_site_menus=fall_back_to_default_site_menus,
         max_levels=max_levels,
         use_specific=use_specific,
         apply_active_classes=apply_active_classes,
@@ -101,10 +89,8 @@ def section_menu(
     if not show_multiple_levels:
         max_levels = 1
 
-    menu = app_settings.SECTION_MENU_CLASS(None, max_levels, use_specific)
-
-    return menu.render(
-        menu_tag_name='section_menu',
+    return app_settings.SECTION_MENU_CLASS.render_from_tag(
+        tag_name='section_menu',
         context=context,
         max_levels=max_levels,
         use_specific=use_specific,
@@ -130,20 +116,10 @@ def children_menu(
         'children_menu', max_levels=max_levels, use_specific=use_specific,
         parent_page=parent_page)
 
-    # Use current page as parent_page if no value supplied
-    if parent_page is None:
-        parent_page = context.get('self')
-    if not parent_page:
-        return ''
-
-    # Create a menu instance that can fetch all pages at once and return
-    # for subpages for each branch as they are needed
-    menu = app_settings.CHILDREN_MENU_CLASS(parent_page, max_levels,
-                                            use_specific)
-
-    return menu.render(
-        menu_tag_name='children_menu',
+    return app_settings.CHILDREN_MENU_CLASS.render_from_tag(
+        tag_name='children_menu',
         context=context,
+        parent_page=parent_page,
         max_levels=max_levels,
         use_specific=use_specific,
         apply_active_classes=apply_active_classes,
@@ -205,11 +181,13 @@ def sub_menu(
 
     original_menu = context.get('original_menu_instance')
     menu_class = context.get('sub_menu_class') or SubMenu
-    menu = menu_class(
-        original_menu, template, parent_page, max_levels, use_specific)
-    return menu.render(
-        menu_tag_name='sub_menu',
+
+    return menu_class.render_from_tag(
+        tag_name='sub_menu',
         context=context,
+        original_menu=original_menu,
+        template=template,
+        parent_page=parent_page,
         max_levels=max_levels,
         use_specific=use_specific,
         apply_active_classes=apply_active_classes,
