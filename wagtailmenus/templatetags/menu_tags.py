@@ -169,11 +169,6 @@ def sub_menu(
     if use_absolute_page_urls is None:
         use_absolute_page_urls = context.get('use_absolute_page_urls', False)
 
-    if template:
-        template = context.template.engine.get_template(template)
-    else:
-        template = context.get('sub_menu_template_instance')
-
     if isinstance(menuitem_or_page, Page):
         parent_page = menuitem_or_page
     else:
@@ -186,13 +181,13 @@ def sub_menu(
         tag_name='sub_menu',
         context=context,
         original_menu=original_menu,
-        template=template,
         parent_page=parent_page,
         max_levels=max_levels,
         use_specific=use_specific,
         apply_active_classes=apply_active_classes,
         allow_repeating_parents=allow_repeating_parents,
         use_absolute_page_urls=use_absolute_page_urls,
+        template_name=template,
     )
 
 
