@@ -28,7 +28,7 @@ from .pages import AbstractLinkPage
 
 ContextualVals = namedtuple('ContextualVals', (
     'parent_context', 'request', 'current_site', 'current_level',
-    'original_menu_tag', 'original_menu_instance', 'current_page',
+    'menu_tag', 'original_menu_tag', 'original_menu_instance', 'current_page',
     'current_section_root_page', 'current_page_ancestor_ids', 'template_engine'
 ))
 
@@ -62,17 +62,15 @@ class Menu(object):
         A template tag should call this method to render menus.
         The ``Context`` instance and other data provided are used to get or
         create a relevant menu instance, prepare it, then render it to a
-        string.
+        an appropriate template.
 
         It shouldn't be neccessary to override this method, as there
-        are more specific methods for overriding the behaviour at different
-        stages of rendering. See:
+        are more specific methods for overriding the certain behaviour at
+        different stages of rendering, such as:
 
             * get_instance_for_rendering() (class method)
             * prepare_to_render()
-            * render()
             * render_to_template()
-
         """
         ctx_vals = cls.get_contextual_vals_from_context(tag_name, context)
         opt_vals = cls.get_option_vals_from_options(**options)
@@ -80,17 +78,17 @@ class Menu(object):
         if not instance:
             return ''
 
-        instance._parent_context = context
         instance.prepare_to_render(context['request'], ctx_vals, opt_vals)
         instance.set_request(context['request'])
-        return instance.render()
+        return instance.render_to_template()
 
     @classmethod
     def get_contextual_vals_from_context(cls, tag_name, context):
         """
-        Gathers together all of the 'contextual' data needed to render a menu
-        instance and returns it in a structure that can be conveniently
-        referenced throughout the process of rendering.
+        Gathers all of the 'contextual' data needed to render a menu instance
+        and returns it in a structure that can be conveniently referenced
+        throughout the process of preparing the menu and menu items and
+        for rendering.
         """
         context_processor_vals = context.get('wagtailmenus_vals', {})
         return ContextualVals(
@@ -98,6 +96,7 @@ class Menu(object):
             context['request'],
             get_site_from_request(context['request']),
             context.get('current_level', 0) + 1,
+            context.get('menu_tag', tag_name),
             context.get('original_menu_tag', tag_name),
             context.get('original_menu_instance'),
             context_processor_vals.get('current_page'),
@@ -109,13 +108,19 @@ class Menu(object):
     @classmethod
     def get_option_vals_from_options(cls, **options):
         """
-        Takes all of the options passed to the class's render_from_tag() method
-        and returns them in a structure that can be conveniently referenced
-        throughout the process of rendering.
+        Takes all of the options passed to the class's ``render_from_tag()``
+        method and returns them in a structure that can be conveniently
+        referenced throughout the process of rendering.
 
-        Any new options that might be needed for custom menu classes are made
-        available as a dictionary, available as `self._option_vals.extra` in
-        most places.
+        Any additionaly options needed for custom menu classes implementations
+        should be available as a dictionary using the 'extra' key name. For
+        example, when rendering a flat menu, the
+        'fall_back_to_default_site_menus' option passed to the tag is available
+        as:
+
+        .. code-block:: python
+
+            option_vals.extra['fall_back_to_default_site_menus']
         """
         return OptionVals(
             options.pop('max_levels'),
@@ -133,36 +138,48 @@ class Menu(object):
     @classmethod
     def get_instance_for_rendering(cls, contextual_vals, option_vals):
         """
-        Called by the class's render_from_tag() method to get or create a
+        Called by the class's ``render_from_tag()`` method to get or create a
         relevant instance to use for rendering using the available data. For
-        model-based menu classes like AbstractMainMenu and AbstractFlatMenu,
-        this will involve fetching the correct object from the database. For
-        others, a new instance will need to be created.
+        model-based menu classes like ``AbstractMainMenu`` and
+        ``AbstractFlatMenu``, this will involve fetching the correct object
+        from the database. For others, a new instance should be created and
+        returned.
         """
         raise NotImplementedError(
             "Subclasses of 'Menu' must define their own "
             "'get_instance_for_rendering' method")
 
+    @classmethod
+    def get_sub_menu_class(cls):
+        return cls.sub_menu_class or SubMenu
+
     def prepare_to_render(self, request, contextual_vals, option_vals):
         """
+        Before calling ``render_to_template()``, this method is called to give
+        the instance opportunity to prepare itself. For example,
+        ``AbstractMainMenu`` and ``AbstractFlatMenu`` needs to call
+        ``set_max_levels()`` and ``set_use_specific()`` to update the
+        ``max_levels`` and ``use_specific`` field values to alternative values
+        passed as option values to the calling menu tag.
+
+        By default, a reference to the 'contextual_vals' and 'option_vals'
+        namedtumples prepared by the class in ``render_from_template()`` are
+        set as private attributes on the instance, making those values
+        available to other instance methods. ``set_request()`` is also called
+        to make the current HttpRequest available as ``self.request``.
         """
         self._contextual_vals = contextual_vals
         self._option_vals = option_vals
         self.set_request(request)
 
-    def render(self, *args, **kwargs):
-        return self.render_to_template(
-            self.get_context_data(),
-            self.get_template(),
-        )
-
-    def render_to_template(self, context_data, template):
+    def render_to_template(self):
+        """
+        Render the current menu instance to a template to return a string
+        """
+        context_data = self.get_context_data()
+        template = self.get_template()
         context_data['current_template'] = template.name
         return template.render(Context(context_data))
-
-    @classmethod
-    def get_sub_menu_class(cls):
-        return cls.sub_menu_class or SubMenu
 
     def clear_page_cache(self):
         try:
@@ -173,24 +190,6 @@ class Menu(object):
             del self.page_children_dict
         except AttributeError:
             pass
-
-    def get_common_hook_kwargs(self):
-        return {
-            'request': self.request,
-            'menu_type': self.menu_type,
-            'max_levels': self.max_levels,
-            'use_specific': self.use_specific,
-            'menu_instance': self,
-        }
-
-    def get_base_page_queryset(self):
-        qs = Page.objects.filter(live=True, expired=False, show_in_menus=True)
-        # allow hooks to modify the queryset
-        for hook in hooks.get_hooks('menus_modify_base_page_queryset'):
-            kwargs = self.get_common_hook_kwargs()
-            kwargs['root_page'] = self.root_page
-            qs = hook(qs, **kwargs)
-        return qs
 
     def set_max_levels(self, max_levels):
         if self.max_levels != max_levels:
@@ -219,12 +218,40 @@ class Menu(object):
 
             self.use_specific = use_specific
 
+    def get_common_hook_kwargs(self, **kwargs):
+        opts = self._option_vals
+        hook_kwargs = self._contextual_vals._asdict()
+        hook_kwargs.update({
+            'menu_instance': self,
+            'parent_page': self.root_page,
+            'max_levels': self.max_levels,
+            'use_specific': self.max_levels,
+            'apply_active_classes': opts.apply_active_classes,
+            'allow_repeating_parents': opts.allow_repeating_parents,
+            'use_absolute_page_urls': opts.use_absolute_page_urls,
+        })
+        hook_kwargs.pop('template_engine')
+        if hook_kwargs['original_menu_instance'] is None:
+            hook_kwargs['original_menu_instance'] = self
+        hook_kwargs.update(kwargs)
+        return hook_kwargs
+
     def set_request(self, request):
         """
         Set `self.request` to the supplied HttpRequest, so that developers can
         make use of it in subclasses
         """
         self.request = request
+
+    def get_base_page_queryset(self):
+        qs = Page.objects.filter(live=True, expired=False, show_in_menus=True)
+        # allow hooks to modify the queryset
+        hook_methods = hooks.get_hooks('menus_modify_base_page_queryset')
+        if hook_methods:
+            hook_kwargs = self.get_common_hook_kwargs()
+            for hook in hook_methods:
+                qs = hook(qs, **hook_kwargs)
+        return qs
 
     def get_pages_for_display(self):
         raise NotImplementedError(
@@ -259,9 +286,8 @@ class Menu(object):
     def get_context_data(self, **kwargs):
         opts = self._option_vals
         ctv_vals = self._contextual_vals
-        parent_context = self._parent_context
 
-        data = parent_context.flatten()
+        data = ctv_vals.parent_context.flatten()
         data.update(ctv_vals._asdict())
         data.update({
             'sub_menu_class': self.get_sub_menu_class(),
@@ -276,7 +302,6 @@ class Menu(object):
             'section_root': data['current_section_root_page'],
             'current_ancestor_ids': data['current_page_ancestor_ids'],
         })
-
         if 'menu_items' not in kwargs:
             data['menu_items'] = self.get_primed_menu_items()
         data.update(kwargs)
@@ -284,7 +309,7 @@ class Menu(object):
 
     def get_primed_menu_items(self):
         items = self.get_raw_menu_items()
-        hook_kwargs = self.get_menu_item_modify_hook_kwargs()
+        hook_kwargs = self.get_common_hook_kwargs()
         for hook in hooks.get_hooks('menus_modify_raw_menu_items'):
             items = hook(items, **hook_kwargs)
         items = self.modify_menu_items(self.prime_menu_items(items))
@@ -594,10 +619,10 @@ class MenuFromRootPage(MultiLevelMenu):
         self.use_specific = use_specific
         super(MenuFromRootPage, self).__init__()
 
-    def render(self, *args, **kwargs):
+    def render_to_template(self):
         if not self.root_page:
             return ''
-        return super(MenuFromRootPage, self).render(*args, **kwargs)
+        return super(MenuFromRootPage, self).render_to_template()
 
     def get_pages_for_display(self):
         """Return all pages needed for rendering all sub-levels for the current
@@ -788,8 +813,11 @@ class MenuWithMenuItems(ClusterableModel, MultiLevelMenu):
     def get_base_menuitem_queryset(self):
         qs = self.get_menu_items_manager().for_display()
         # allow hooks to modify the queryset
+        hook_methods = hooks.get_hooks('menus_modify_base_menuitem_queryset')
+        if hook_methods:
+            hook_kwargs = self.get_common_hook_kwargs()
         for hook in hooks.get_hooks('menus_modify_base_menuitem_queryset'):
-            qs = hook(qs, **self.get_common_hook_kwargs())
+            qs = hook(qs, **hook_kwargs)
         return qs
 
     @cached_property
