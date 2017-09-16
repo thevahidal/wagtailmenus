@@ -270,10 +270,10 @@ In the above examples, ``**kwargs`` is used in hook method signatures to make th
 Below is a full list of the additional arguments that are passed to methods using the above hooks:
 
 ``request``
-    The ``HttpRequest`` object that the menu is currently being rendered for.
+    The ``HttpRequest`` instance that the menu is currently being rendered for.
 
 ``parent_context``
-    The ``Context`` object for the 
+    The ``Context`` instance that the menu is being rendered from.
 
 ``parent_page``
     If the menu being rendered is showing 'children' of a specific page, this will be the ``Page`` instance who's children pages are being displayed. The value might also be ``None`` if no parent page is involved. For example, if rendering the top level items of a main or flat menu.
@@ -322,7 +322,8 @@ Below is a full list of the additional arguments that are passed to methods usin
         |   └── Events
         └── Contact us
 
-    If the current page was 'Article one', 'News & events' would be the section root page. Or, if the the current page was 'Vacancy one', it would be 'Careers'.
+    if the current page was 'Vacancy one', the section root page would be 
+    'Careers'. Or, if the current page was 'Article one', the section root page would be  'News & events'.
 
 ``use_specific``
     An integer value indicating the preferred policy for using ``PageQuerySet.specific()`` and ``Page.specific`` in rendering the current menu. For more information see: :ref:`specific_pages`.
