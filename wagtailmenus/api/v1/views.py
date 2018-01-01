@@ -1,5 +1,3 @@
-from django.http import Http404
-from django.test import RequestFactory
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -101,89 +99,29 @@ class MenuRenderView(APIView):
         menu_serializer = self.get_menu_serializer(menu_instance, *args, **kwargs)
         return Response(menu_serializer.data)
 
-    def get_menu_instance(self, request, arg_data):
+    def get_menu_instance(self, request, data):
         """
         The Menu classes themselves are responsible for getting/creating menu
         instances and preparing them for rendering. So, the role of this
         method is to bundle up all available data into a format that
         ``Menu._get_render_prepared_object()`` will understand, and call that.
         """
-        site = arg_data['site']
-        current_page, section_root, ancestor_ids = self.derive_page_data_from_argument_data(
-            arg_data
-        )
 
         # Menus are typically rendered from an existing ``RequestContext``
         # object, which we do not have. However, we can provide a dictionary
         # with a similar-looking data structure.
-        context = {
+        dummy_context = {
             'request': request,
-            'current_site': site,
-            # Typically, this would be added by wagtailmenus' context processor
+            'current_site': data.pop('site'),
             'wagtailmenus_vals': {
-                'current_page': current_page,
-                'section_root': section_root,
-                'current_page_ancestor_ids': ancestor_ids,
+                'current_page': data.pop('current_page', None),
+                'section_root': data.pop('section_root', None),
+                'current_page_ancestor_ids': data.pop('ancestor_page_ids', ()),
             }
         }
-
         cls = self.get_menu_class()
-        option_values = self.get_option_values_from_arg_data(arg_data, site, current_page)
-        return cls._get_render_prepared_object(context, **option_values)
-
-    def derive_page_data_from_arg_data(self, arg_data):
-        site = arg_data['site']
-        apply_active_classes = arg_data['apply_active_classes']
-        url = arg_data['current_url']
-
-        if not url or not apply_active_classes:
-            return None, None, ()
-
-        # derive current page (or closest) and ancestor page ids
-        current_page = None
-        best_match_page = None
-        ancestor_ids = ()
-        section_root_depth = settings.SECTION_ROOT_DEPTH
-        path_components = [pc for pc in url.split('/') if pc]
-
-        # Create a HttpRequest to pass to Page.route()
-        rf = RequestFactory()
-        request = rf.get(url)
-        # if the active request is authenticated, this one should be too
-        request.user = self.request.user
-
-        # Keep trying to find a page using the path components until there
-        # are no components left, or a page has been identified
-        first_run = True
-        while path_components and best_match_page is None:
-            try:
-                best_match_page, args, kwargs = site.root_page.specific.route(
-                    request, path_components)
-                ancestor_ids = set(
-                    best_match_page.get_ancestors(inclusive=True)
-                    .filter(depth__gte=section_root_depth)
-                    .values_list('id', flat=True)
-                )
-                if first_run:
-                    # A page was found matching the exact path, so it's
-                    # safe to assume it's the 'current page'
-                    current_page = best_match_page
-                    ancestor_ids.remove(current_page.id)
-            except Http404:
-                # No match found, so remove a path component and try again
-                path_components.pop()
-            first_run = False
-
-        # derive section root
-        section_root = None
-        page = current_page or best_match_page
-        if page and page.depth == section_root_depth:
-            section_root = page
-        elif page and page.depth > section_root_depth:
-            section_root = page.get_ancestors().filter(
-                depth__exact=section_root_depth).first()
-
-        return current_page, section_root, ancestor_ids
+        data['add_sub_menus_inline'] = True
+        return cls._get_render_prepared_object(dummy_context, **data)
 
     def derive_option_values_from_arg_data(self, arg_data, site, current_page):
         # Any remaining values can safely be considered as 'option values'
