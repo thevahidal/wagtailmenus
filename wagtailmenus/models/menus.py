@@ -1174,6 +1174,9 @@ class AbstractFlatMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
 
     def get_default_sub_menu_template_names(self):
         templates = app_settings.DEFAULT_FLAT_MENU_SUB_MENU_TEMPLATES
+        # This setting can be a list or tuple like for other menu types, or a
+        # dictionary keyed by 'handle', allowing developers to specify
+        # different sub_menu templates for each variation of flat menu
         if isinstance(templates, dict):
             if self.handle in templates:
                 return templates[self.handle]
