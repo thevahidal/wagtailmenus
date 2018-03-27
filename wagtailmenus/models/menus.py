@@ -54,7 +54,8 @@ ContextualVals = namedtuple('ContextualVals', (
 OptionVals = namedtuple('OptionVals', (
     'max_levels', 'use_specific', 'apply_active_classes',
     'allow_repeating_parents', 'use_absolute_page_urls', 'parent_page',
-    'handle', 'template_name', 'sub_menu_template_name', 'extra'
+    'handle', 'template_name', 'sub_menu_template_name',
+    'sub_menu_template_names', 'extra'
 ))
 
 
@@ -151,6 +152,7 @@ class Menu:
             options.pop('handle', None),  # for AbstractFlatMenu
             options.pop('template_name', ''),
             options.pop('sub_menu_template_name', ''),
+            options.pop('sub_menu_template_names', None),
             options  # anything left over will be stored as 'extra'
         )
 
@@ -573,6 +575,10 @@ class Menu:
         item, which typically comes from an overridable setting."""
         return
 
+    @classmethod
+    def get_default_sub_menu_template_names(cls):
+        return ()
+
 
 class MenuFromPage(Menu):
     """
@@ -691,6 +697,10 @@ class SectionMenu(DefinesSubMenuTemplatesMixin, MenuFromPage):
     def get_least_specific_template_name(cls):
         return app_settings.DEFAULT_SECTION_MENU_TEMPLATE
 
+    @classmethod
+    def get_default_sub_menu_template_names(cls):
+        return app_settings.DEFAULT_SECTION_MENU_SUB_MENU_TEMPLATES
+
     def __init__(self, root_page, max_levels, use_specific):
         self.root_page = root_page
         self.max_levels = max_levels
@@ -784,6 +794,10 @@ class ChildrenMenu(DefinesSubMenuTemplatesMixin, MenuFromPage):
     def get_least_specific_template_name(cls):
         return app_settings.DEFAULT_CHILDREN_MENU_TEMPLATE
 
+    @classmethod
+    def get_default_sub_menu_template_names(cls):
+        return app_settings.DEFAULT_CHILDREN_MENU_SUB_MENU_TEMPLATES
+
     def __init__(self, parent_page, max_levels=None, use_specific=None):
         if max_levels is None:
             raise TypeError(
@@ -840,7 +854,9 @@ class SubMenu(MenuFromPage):
     def get_template(self):
         if self._option_vals.template_name or self.template_name:
             return super().get_template()
-        return self.original_menu.sub_menu_template
+        return self.original_menu.get_sub_menu_template(
+            level=self._contextual_vals.current_level
+        )
 
     def get_context_data(self, **kwargs):
         data = {'parent_page': self.parent_page}
@@ -1040,6 +1056,10 @@ class AbstractMainMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
     def get_least_specific_template_name(cls):
         return app_settings.DEFAULT_MAIN_MENU_TEMPLATE
 
+    @classmethod
+    def get_default_sub_menu_template_names(cls):
+        return app_settings.DEFAULT_MAIN_MENU_SUB_MENU_TEMPLATES
+
     def __str__(self):
         return _('Main menu for %(site_name)s') % {
             'site_name': self.site.site_name or self.site
@@ -1151,6 +1171,16 @@ class AbstractFlatMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
     @classmethod
     def get_least_specific_template_name(cls):
         return app_settings.DEFAULT_FLAT_MENU_TEMPLATE
+
+    def get_default_sub_menu_template_names(self):
+        templates = app_settings.DEFAULT_FLAT_MENU_SUB_MENU_TEMPLATES
+        if isinstance(templates, dict):
+            if self.handle in templates:
+                return templates[self.handle]
+            if 'default' in templates:
+                return templates['default']
+            return ()
+        return templates
 
     def __str__(self):
         return '%s (%s)' % (self.title, self.handle)
