@@ -576,7 +576,7 @@ class Menu:
         return
 
     @classmethod
-    def get_default_sub_menu_template_names(cls):
+    def get_sub_menu_template_names_from_setting(cls):
         return ()
 
 
@@ -698,7 +698,7 @@ class SectionMenu(DefinesSubMenuTemplatesMixin, MenuFromPage):
         return app_settings.DEFAULT_SECTION_MENU_TEMPLATE
 
     @classmethod
-    def get_default_sub_menu_template_names(cls):
+    def get_sub_menu_template_names_from_setting(cls):
         return app_settings.DEFAULT_SECTION_MENU_SUB_MENU_TEMPLATES
 
     def __init__(self, root_page, max_levels, use_specific):
@@ -795,7 +795,7 @@ class ChildrenMenu(DefinesSubMenuTemplatesMixin, MenuFromPage):
         return app_settings.DEFAULT_CHILDREN_MENU_TEMPLATE
 
     @classmethod
-    def get_default_sub_menu_template_names(cls):
+    def get_sub_menu_template_names_from_setting(cls):
         return app_settings.DEFAULT_CHILDREN_MENU_SUB_MENU_TEMPLATES
 
     def __init__(self, parent_page, max_levels=None, use_specific=None):
@@ -1057,7 +1057,7 @@ class AbstractMainMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
         return app_settings.DEFAULT_MAIN_MENU_TEMPLATE
 
     @classmethod
-    def get_default_sub_menu_template_names(cls):
+    def get_sub_menu_template_names_from_setting(cls):
         return app_settings.DEFAULT_MAIN_MENU_SUB_MENU_TEMPLATES
 
     def __str__(self):
@@ -1172,7 +1172,7 @@ class AbstractFlatMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
     def get_least_specific_template_name(cls):
         return app_settings.DEFAULT_FLAT_MENU_TEMPLATE
 
-    def get_default_sub_menu_template_names(self):
+    def get_sub_menu_template_names_from_setting(self):
         templates = app_settings.DEFAULT_FLAT_MENU_SUB_MENU_TEMPLATES
         # This setting can be a list or tuple like for other menu types, or a
         # dictionary keyed by 'handle', allowing developers to specify
@@ -1240,15 +1240,15 @@ class AbstractFlatMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
         site = self._contextual_vals.current_site
         template_names = []
         if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS and site:
-            hn = site.hostname
+            hostname = site.hostname
             template_names.extend([
-                "menus/%s/flat/%s/menu.html" % (hn, self.handle),
-                "menus/%s/flat/%s.html" % (hn, self.handle),
-                "menus/%s/%s/menu.html" % (hn, self.handle),
-                "menus/%s/%s.html" % (hn, self.handle),
-                "menus/%s/flat/menu.html" % hn,
-                "menus/%s/flat/default.html" % hn,
-                "menus/%s/flat_menu.html" % hn,
+                "menus/%s/flat/%s/menu.html" % (hostname, self.handle),
+                "menus/%s/flat/%s.html" % (hostname, self.handle),
+                "menus/%s/%s/menu.html" % (hostname, self.handle),
+                "menus/%s/%s.html" % (hostname, self.handle),
+                "menus/%s/flat/menu.html" % hostname,
+                "menus/%s/flat/default.html" % hostname,
+                "menus/%s/flat_menu.html" % hostname,
             ])
         template_names.extend([
             "menus/flat/%s/menu.html" % self.handle,
