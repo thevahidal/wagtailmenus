@@ -577,7 +577,7 @@ class Menu:
 
     @classmethod
     def get_sub_menu_template_names_from_setting(cls):
-        return ()
+        return None
 
 
 class MenuFromPage(Menu):
