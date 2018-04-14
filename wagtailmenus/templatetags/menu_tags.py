@@ -14,6 +14,12 @@ flat_menus_fbtdsm = app_settings.FLAT_MENUS_FALL_BACK_TO_DEFAULT_SITE_MENUS
 register = Library()
 
 
+def split_if_string(val, separator=','):
+    if isinstance(val, str):
+        return tuple(item.strip() for item in val.split(separator))
+    return val
+
+
 @register.simple_tag(takes_context=True)
 def main_menu(
     context, max_levels=None, use_specific=None, apply_active_classes=True,
@@ -36,7 +42,7 @@ def main_menu(
         use_absolute_page_urls=use_absolute_page_urls,
         template_name=template,
         sub_menu_template_name=sub_menu_template,
-        sub_menu_template_names=sub_menu_templates,
+        sub_menu_template_names=split_if_string(sub_menu_templates),
         **kwargs
     )
 
@@ -67,7 +73,7 @@ def flat_menu(
         use_absolute_page_urls=use_absolute_page_urls,
         template_name=template,
         sub_menu_template_name=sub_menu_template,
-        sub_menu_template_names=sub_menu_templates,
+        sub_menu_template_names=split_if_string(sub_menu_templates),
         show_menu_heading=show_menu_heading,
         **kwargs
     )
@@ -99,7 +105,7 @@ def section_menu(
         use_absolute_page_urls=use_absolute_page_urls,
         template_name=template,
         sub_menu_template_name=sub_menu_template,
-        sub_menu_template_names=sub_menu_templates,
+        sub_menu_template_names=split_if_string(sub_menu_templates),
         show_section_root=show_section_root,
         **kwargs
     )
@@ -128,7 +134,7 @@ def children_menu(
         use_absolute_page_urls=use_absolute_page_urls,
         template_name=template,
         sub_menu_template_name=sub_menu_template,
-        sub_menu_template_names=sub_menu_templates,
+        sub_menu_template_names=split_if_string(sub_menu_templates),
         **kwargs
     )
 
