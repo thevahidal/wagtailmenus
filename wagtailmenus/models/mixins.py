@@ -3,11 +3,11 @@ from django.template.loader import get_template, select_template
 from .. import app_settings
 
 
-def get_item_by_index_or_last_item(items, ideal_index):
-    if not items:
+def get_item_by_index_or_last_item(items, index):
+    if items is None:
         return
     try:
-        return items[ideal_index]
+        return items[index]
     except IndexError:
         return items[-1]
 
