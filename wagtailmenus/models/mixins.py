@@ -57,8 +57,7 @@ class DefinesSubMenuTemplatesMixin:
             get_item_by_index_or_last_item(
                 self.sub_menu_template_names, ideal_index) or \
             get_item_by_index_or_last_item(
-                self.get_sub_menu_template_names_from_setting(), ideal_index
-            )
+                self.get_sub_menu_template_names_from_setting(), ideal_index)
 
     def get_sub_menu_template(self, level=2):
         if not hasattr(self, '_sub_menu_template_cache'):
@@ -71,14 +70,14 @@ class DefinesSubMenuTemplatesMixin:
         template_name = self._get_specified_sub_menu_template_name(level)
         if template_name:
             # A template was specified somehow
-            t = get_template(template_name)
+            template = get_template(template_name)
         else:
             # A template wasn't specified, so search the filesystem
-            t = select_template(self.get_sub_menu_template_names())
+            template = select_template(self.get_sub_menu_template_names())
 
         # Cache the template instance before returning
-        self._sub_menu_template_cache[level] = t
-        return t
+        self._sub_menu_template_cache[level] = template
+        return template
 
     sub_menu_template = property(get_sub_menu_template)
 
