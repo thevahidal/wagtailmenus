@@ -1,19 +1,15 @@
-import warnings
-from django.utils.functional import cached_property
 from django.template.loader import get_template, select_template
 
 from .. import app_settings
-from ..utils.deprecation import RemovedInWagtailMenus211Warning
 
 
-def get_template_name_for_level(template_name_list, level):
-    assert level >= 2
-    if not template_name_list:
+def get_item_by_index_or_last_item(items, ideal_index):
+    if not items:
         return
     try:
-        return template_name_list[level - 2]
-    except KeyError:
-        return template_name_list[-1]
+        return items[ideal_index]
+    except IndexError:
+        return items[-1]
 
 
 class DefinesSubMenuTemplatesMixin:
@@ -25,10 +21,9 @@ class DefinesSubMenuTemplatesMixin:
     def _get_specified_sub_menu_template_name(self, level):
         """
         Called by get_sub_menu_template(). Iterates through the various ways in
-        which developers can specify sub menu templates to be used, and returns
-        the name of the most suitable template for the provided ``level``. It's
-        possible that no template has been specified, in which case, a ``None``
-        value will be returned. Values are checked in the following order:
+        which developers can specify potential sub menu templates for a menu,
+        and returns the name of the most suitable template for the
+        ``current_level``. Values are checked in the following order:
 
         1.  The ``sub_menu_template`` value passed to the template tag (if
             provided)
@@ -40,73 +35,78 @@ class DefinesSubMenuTemplatesMixin:
             ``sub_menu_template_names`` attribute on the menu class (if set)
         5.  The most suitable template from a list of templates returned by
             self.get_sub_menu_template_names_from_setting()
+
+        Parameters
+        ----------
+        level : int
+            The 'current_level' value from the context, indicating the depth
+            of sub menu being rendered as part of a multi-level menu. For sub
+            menus, the value will always be greater than or equal to 2.
+
+        Returns
+        -------
+        str or None
+            A template name string (the path to a template in the file system),
+            or None if no template has been 'specified'
         """
+        ideal_index = level - 2
         return self._option_vals.sub_menu_template_name or \
-            get_template_name_for_level(
-                self._option_vals.sub_menu_template_names, level
-            ) or \
+            get_item_by_index_or_last_item(
+                self._option_vals.sub_menu_template_names, ideal_index) or \
             self.sub_menu_template_name or \
-            get_template_name_for_level(
-                self.sub_menu_template_names, level
-            ) or \
-            get_template_name_for_level(
-                self.get_sub_menu_template_names_from_setting(), level
+            get_item_by_index_or_last_item(
+                self.sub_menu_template_names, ideal_index) or \
+            get_item_by_index_or_last_item(
+                self.get_sub_menu_template_names_from_setting(), ideal_index
             )
 
     def get_sub_menu_template(self, level=2):
-        if not hasattr(self, '_sub_menu_templates_by_level'):
+        if not hasattr(self, '_sub_menu_template_cache'):
             # Initialise cache for this menu instance
-            self._sub_menu_templates_by_level = {}
-        elif level in self._sub_menu_templates_by_level:
+            self._sub_menu_template_cache = {}
+        elif level in self._sub_menu_template_cache:
             # Return a cached template instance
-            return self._sub_menu_templates_by_level[level]
-        # Get a new template instance for the provided `level`
+            return self._sub_menu_template_cache[level]
+
         template_name = self._get_specified_sub_menu_template_name(level)
         if template_name:
             # A template was specified somehow
             t = get_template(template_name)
         else:
-            # A template wasn't specified, so search the filesystem for one
+            # A template wasn't specified, so search the filesystem
             t = select_template(self.get_sub_menu_template_names())
+
         # Cache the template instance before returning
-        self._sub_menu_templates_by_level[level] = t
+        self._sub_menu_template_cache[level] = t
         return t
 
-    @cached_property
-    def sub_menu_template(self):
-        warnings.warn(
-            "The 'sub_menu_template' property method is deprecated in favour "
-            "of always calling get_sub_menu_template() with the 'level' "
-            "argument to return level-specific templates.",
-            category=RemovedInWagtailMenus211Warning
-        )
-        return self.get_sub_menu_template()
+    sub_menu_template = property(get_sub_menu_template)
 
     def get_sub_menu_template_names(self):
-        """Return a list of template paths/names to search when
-        rendering a sub menu for an instance of this class. The list should be
-        ordered with most specific names first, since the first template found
-        to exist will be used for rendering"""
-        current_site = self._contextual_vals.current_site
+        """Return a list of template paths/names to search when rendering a
+        sub menu for this menu instance. The list should beordered with most
+        specific names first, since the first template found to exist will be
+        used for rendering"""
         template_names = []
-        menu_str = self.menu_short_name
+        menu_name = self.menu_short_name
+        current_site = self._contextual_vals.current_site
         if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS and current_site:
             hostname = current_site.hostname
             template_names.extend([
-                "menus/%s/%s/sub_menu.html" % (hostname, menu_str),
-                "menus/%s/%s_sub_menu.html" % (hostname, menu_str),
+                "menus/%s/%s/sub_menu.html" % (hostname, menu_name),
+                "menus/%s/%s_sub_menu.html" % (hostname, menu_name),
                 "menus/%s/sub_menu.html" % hostname,
             ])
         template_names.extend([
-            "menus/%s/sub_menu.html" % menu_str,
-            "menus/%s_sub_menu.html" % menu_str,
+            "menus/%s/sub_menu.html" % menu_name,
+            "menus/%s_sub_menu.html" % menu_name,
             app_settings.DEFAULT_SUB_MENU_TEMPLATE,
         ])
         return template_names
 
     def get_context_data(self, **kwargs):
         """
-        Include the name of the sub-menu template in the context. This is
+        Include the name of the sub menu template in the context. This is
         purely for backwards compatibility. Any sub menus rendered as part of
         this menu will call `sub_menu_template` on the original menu instance
         to get an actual `Template`
