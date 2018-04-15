@@ -95,4 +95,4 @@ class TestFlatMenuClass(TestCase):
         result = menu.get_template_names()
         self.assertEqual(len(result), 7)
         for val in result:
-            self.assertFalse(self.site.hostname in val)
+            self.assertTrue(self.site.hostname not in val)
