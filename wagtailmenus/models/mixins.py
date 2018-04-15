@@ -88,15 +88,19 @@ class DefinesSubMenuTemplatesMixin:
         used for rendering"""
         template_names = []
         menu_name = self.menu_short_name
-        current_site = self._contextual_vals.current_site
-        if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS and current_site:
-            hostname = current_site.hostname
+        site = self._contextual_vals.current_site
+        level = self._contextual_vals.current_level
+        if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS and site:
+            hostname = site.hostname
             template_names.extend([
+                "menus/%s/%s/sub_menu_level_%s.html" % (hostname, menu_name, level),
+                "menus/%s/%s_sub_menu_level_%s.html" % (hostname, menu_name, level),
                 "menus/%s/%s/sub_menu.html" % (hostname, menu_name),
-                "menus/%s/%s_sub_menu.html" % (hostname, menu_name),
                 "menus/%s/sub_menu.html" % hostname,
             ])
         template_names.extend([
+            "menus/%s/sub_menu_level_%s.html" % (menu_name, level),
+            "menus/%s_sub_menu_level_%s.html" % (menu_name, level),
             "menus/%s/sub_menu.html" % menu_name,
             "menus/%s_sub_menu.html" % menu_name,
             app_settings.DEFAULT_SUB_MENU_TEMPLATE,

@@ -1237,10 +1237,10 @@ class AbstractFlatMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
     def get_template_names(self):
         """Returns a list of template names to search for when rendering a
         a specific flat menu object (making use of self.handle)"""
-        site = self._contextual_vals.current_site
+        current_site = self._contextual_vals.current_site
         template_names = []
-        if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS and site:
-            hostname = site.hostname
+        if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS and current_site:
+            hostname = current_site.hostname
             template_names.extend([
                 "menus/%s/flat/%s/menu.html" % (hostname, self.handle),
                 "menus/%s/flat/%s.html" % (hostname, self.handle),
@@ -1268,10 +1268,13 @@ class AbstractFlatMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
         a sub menu for a specific flat menu object (making use of self.handle)
         """
         site = self._contextual_vals.current_site
+        level = self._contextual_vals.current_level
         template_names = []
         if app_settings.SITE_SPECIFIC_TEMPLATE_DIRS and site:
             hn = site.hostname
             template_names.extend([
+                "menus/%s/flat/%s/sub_menu_level_%s.html" % (hn, self.handle, level),
+                "menus/%s/flat/%s_sub_menu_level_%s.html" % (hn, self.handle, level),
                 "menus/%s/flat/%s/sub_menu.html" % (hn, self.handle),
                 "menus/%s/flat/%s_sub_menu.html" % (hn, self.handle),
                 "menus/%s/%s/sub_menu.html" % (hn, self.handle),
@@ -1280,10 +1283,15 @@ class AbstractFlatMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
                 "menus/%s/sub_menu.html" % hn,
             ])
         template_names.extend([
+            "menus/flat/%s/sub_menu_level_%s.html" % (self.handle, level),
+            "menus/flat/%s_sub_menu_level_%s.html" % (self.handle, level),
+            "menus/%s/sub_menu_level_%s.html" % (self.handle, level),
+            "menus/%s_sub_menu_level_%s.html" % (self.handle, level),
             "menus/flat/%s/sub_menu.html" % self.handle,
             "menus/flat/%s_sub_menu.html" % self.handle,
             "menus/%s/sub_menu.html" % self.handle,
             "menus/%s_sub_menu.html" % self.handle,
+            "menus/flat/sub_menu_level_%s.html" % level,
             "menus/flat/sub_menu.html",
             app_settings.DEFAULT_SUB_MENU_TEMPLATE,
         ])
