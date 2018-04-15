@@ -1,17 +1,18 @@
-from __future__ import absolute_import, unicode_literals
+from django.test import TestCase, override_settings
 
-from django.test import TestCase
-from wagtail import VERSION as WAGTAIL_VERSION
-if WAGTAIL_VERSION >= (2, 0):
-    from wagtail.core.models import Page
-else:
-    from wagtail.wagtailcore.models import Page
+from wagtailmenus.models import MainMenu
+from wagtailmenus.tests import utils
 
-from wagtailmenus.models import ChildrenMenu, MainMenu
+Page = utils.get_page_model()
 
 
-class TestMainMenu(TestCase):
+class TestMainMenuClass(TestCase):
     fixtures = ['test.json']
+
+    def get_random_menu_instance_with_opt_vals_set(self):
+        obj = MainMenu.objects.order_by('?').first()
+        obj._option_vals = utils.make_optionvals_instance()
+        return obj
 
     def test_top_level_items(self):
         menu = MainMenu.objects.get(pk=1)
@@ -137,20 +138,123 @@ class TestMainMenu(TestCase):
         self.assertEqual(marvel_item.link_page.title, 'Marvel Comics')
         self.assertEqual(marvel_item.sort_order, 6)
 
+    def test_get_sub_menu_template_names_from_setting_returns_none_if_setting_not_set(self):
+        self.assertEqual(
+            MainMenu.get_sub_menu_template_names_from_setting(), None
+        )
 
-class TestChildrenMenu(TestCase):
-    fixtures = ['test.json']
+    @override_settings(
+        WAGTAILMENUS_DEFAULT_MAIN_MENU_SUB_MENU_TEMPLATES=utils.SUB_MENU_TEMPLATE_LIST
+    )
+    def test_get_sub_menu_template_names_from_setting_returns_setting_value_when_set(self):
+        self.assertEqual(
+            MainMenu.get_sub_menu_template_names_from_setting(),
+            utils.SUB_MENU_TEMPLATE_LIST
+        )
 
-    """A test case for testing deprecated behaviour on the ChildrenMenu class
-    introduced in v2.5
-    """
-    def test_init_required_vals(self):
-        page = Page.objects.get(url_path='/home/about-us/')
+    def test_get_specified_sub_menu_template_name_returns_none_if_no_templates_specified(self):
+        menu = self.get_random_menu_instance_with_opt_vals_set()
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=2), None
+        )
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=3), None
+        )
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=4), None
+        )
 
-        msg_extract = "'max_levels' must be provided when creating"
-        with self.assertRaisesRegex(TypeError, msg_extract):
-            ChildrenMenu(page, use_specific=1)
+    @override_settings(
+        WAGTAILMENUS_DEFAULT_MAIN_MENU_SUB_MENU_TEMPLATES=utils.SUB_MENU_TEMPLATE_LIST
+    )
+    def test_get_specified_sub_menu_template_name_returns_idea_template_if_setting_defined(self):
+        menu = self.get_random_menu_instance_with_opt_vals_set()
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=2),
+            utils.SUB_MENU_TEMPLATE_LIST[0]
+        )
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=3),
+            utils.SUB_MENU_TEMPLATE_LIST[1]
+        )
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=4),
+            utils.SUB_MENU_TEMPLATE_LIST[2]
+        )
 
-        msg_extract = "'use_specific' must be provided when creating"
-        with self.assertRaisesRegex(TypeError, msg_extract):
-            ChildrenMenu(page, max_levels=1)
+    @override_settings(
+        WAGTAILMENUS_DEFAULT_MAIN_MENU_SUB_MENU_TEMPLATES=utils.SINGLE_ITEM_SUB_MENU_TEMPLATE_LIST
+    )
+    def test_get_specified_sub_menu_template_name_returns_last_template_when_no_template_specified_for_level(self):
+        menu = self.get_random_menu_instance_with_opt_vals_set()
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=2),
+            utils.SUB_MENU_TEMPLATE_LIST[0]
+        )
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=3),
+            utils.SUB_MENU_TEMPLATE_LIST[0]
+        )
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=4),
+            utils.SUB_MENU_TEMPLATE_LIST[0]
+        )
+
+    @override_settings(
+        WAGTAILMENUS_DEFAULT_MAIN_MENU_SUB_MENU_TEMPLATES=utils.SINGLE_ITEM_SUB_MENU_TEMPLATE_LIST
+    )
+    def test_get_specified_sub_menu_template_name_value_preference_order(self):
+        menu = MainMenu.objects.all().first()
+        menu._option_vals = utils.make_optionvals_instance(
+            sub_menu_template_name='single_template_as_option.html',
+            sub_menu_template_names=('option_one.html', 'option_two.html')
+        )
+        menu.sub_menu_template_name = 'single_template_as_attr.html'
+        menu.sub_menu_template_names = utils.SUB_MENU_TEMPLATE_LIST
+
+        # While both 'sub_menu_template_name' and 'sub_menu_template_names' are
+        # specified as option values, the 'sub_menu_template_name' value will
+        # be preferred
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=4),
+            'single_template_as_option.html'
+        )
+
+        # If only 'sub_menu_template_names' is specified as an option value,
+        # the, that will be preferred
+        menu._option_vals = utils.make_optionvals_instance(
+            sub_menu_template_name=None,
+            sub_menu_template_names=('option_one.html', 'option_two.html')
+        )
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=4),
+            'option_two.html',
+        )
+
+        # If no templates have been specified via options, the
+        # 'sub_menu_template_name' attribute is preferred
+        menu._option_vals = utils.make_optionvals_instance(
+            sub_menu_template_name=None,
+            sub_menu_template_names=None
+        )
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=4),
+            'single_template_as_attr.html'
+        )
+
+        # If the 'sub_menu_template_name' attribute is None, the method
+        # should prefer the 'sub_menu_template_names' attribute
+        menu.sub_menu_template_name = None
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=4),
+            menu.sub_menu_template_names[2]
+        )
+
+        # If the 'sub_menu_template_names' attribute is None, the method
+        # will then return a value from the DEFAULT_MAIN_MENU_SUB_MENU_TEMPLATES
+        # setting
+        menu.sub_menu_template_names = None
+        self.assertEqual(
+            menu._get_specified_sub_menu_template_name(level=4),
+            utils.SINGLE_ITEM_SUB_MENU_TEMPLATE_LIST[0]
+        )
