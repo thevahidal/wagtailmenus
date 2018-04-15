@@ -65,6 +65,16 @@ class TestFlatMenuClass(TestCase):
         self.assertNotIn(menu.handle, TEMPLATES_BY_HANDLE_DICT.keys())
         self.assertEqual(menu.get_sub_menu_template_names_from_setting(), TEMPLATE_LIST_DEFAULT)
 
+    def test_get_template_names_does_not_include_site_specific_templates_if_by_default(self):
+        menu = self.menus[0]
+        menu._contextual_vals = utils.make_contextualvals_instance(
+            url='/', current_site=self.site
+        )
+        result = menu.get_template_names()
+        self.assertEqual(len(result), 7)
+        for val in result:
+            self.assertFalse(self.site.hostname in val)
+
     @override_settings(WAGTAILMENUS_SITE_SPECIFIC_TEMPLATE_DIRS=True)
     def test_get_template_names_includes_site_specific_templates_if_setting_is_true_and_current_site_is_in_contextual_vals(self):
         menu = self.menus[0]
