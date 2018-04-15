@@ -167,7 +167,7 @@ class TestMainMenuClass(TestCase):
     @override_settings(
         WAGTAILMENUS_DEFAULT_MAIN_MENU_SUB_MENU_TEMPLATES=utils.SUB_MENU_TEMPLATE_LIST
     )
-    def test_get_specified_sub_menu_template_name_returns_idea_template_if_setting_defined(self):
+    def test_get_specified_sub_menu_template_name_returns_ideal_template_if_setting_defined(self):
         menu = self.get_random_menu_instance_with_opt_vals_set()
         self.assertEqual(
             menu._get_specified_sub_menu_template_name(level=2),
@@ -176,10 +176,6 @@ class TestMainMenuClass(TestCase):
         self.assertEqual(
             menu._get_specified_sub_menu_template_name(level=3),
             utils.SUB_MENU_TEMPLATE_LIST[1]
-        )
-        self.assertEqual(
-            menu._get_specified_sub_menu_template_name(level=4),
-            utils.SUB_MENU_TEMPLATE_LIST[2]
         )
 
     @override_settings(
@@ -193,10 +189,6 @@ class TestMainMenuClass(TestCase):
         )
         self.assertEqual(
             menu._get_specified_sub_menu_template_name(level=3),
-            utils.SUB_MENU_TEMPLATE_LIST[0]
-        )
-        self.assertEqual(
-            menu._get_specified_sub_menu_template_name(level=4),
             utils.SUB_MENU_TEMPLATE_LIST[0]
         )
 
@@ -247,7 +239,7 @@ class TestMainMenuClass(TestCase):
         menu.sub_menu_template_name = None
         self.assertEqual(
             menu._get_specified_sub_menu_template_name(level=4),
-            menu.sub_menu_template_names[2]
+            menu.sub_menu_template_names[1]
         )
 
         # If the 'sub_menu_template_names' attribute is None, the method
