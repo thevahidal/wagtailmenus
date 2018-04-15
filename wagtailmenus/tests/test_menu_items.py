@@ -86,7 +86,7 @@ class MenuItemModelTestMixin:
         )
 
 
-class TestMainMenuItem(MenuItemModelTestMixin, TestCase):
+class TestMainMenuItemGeneralMethods(MenuItemModelTestMixin, TestCase):
     """
     Runs the tests from MenuItemModelTestMixin for the MainMenuItem model
     """
@@ -94,7 +94,7 @@ class TestMainMenuItem(MenuItemModelTestMixin, TestCase):
     menu_item_model = MainMenuItem
 
 
-class TestFlatMenuItemMethods(MenuItemModelTestMixin, TestCase):
+class TestFlatMenuItemGeneralMethods(MenuItemModelTestMixin, TestCase):
     """
     Runs the tests from MenuItemModelTestMixin for the FlatMenuItem model
     """
