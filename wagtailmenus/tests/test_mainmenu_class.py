@@ -250,3 +250,35 @@ class TestMainMenuClass(TestCase):
             menu._get_specified_sub_menu_template_name(level=4),
             utils.SINGLE_ITEM_SUB_MENU_TEMPLATE_LIST[0]
         )
+
+    def test_get_template_names_does_not_include_site_specific_templates_if_by_default(self):
+        menu = MainMenu.objects.all().first()
+        menu._contextual_vals = utils.make_contextualvals_instance(
+            url='/', current_site=menu.site
+        )
+        result = menu.get_template_names()
+        self.assertEqual(len(result), 2)
+        for val in result:
+            self.assertFalse(menu.site.hostname in val)
+
+    @override_settings(WAGTAILMENUS_SITE_SPECIFIC_TEMPLATE_DIRS=True)
+    def test_get_template_names_includes_site_specific_templates_if_setting_is_true_and_current_site_is_in_contextual_vals(self):
+        menu = MainMenu.objects.all().first()
+        menu._contextual_vals = utils.make_contextualvals_instance(
+            url='/', current_site=menu.site
+        )
+        result = menu.get_template_names()
+        self.assertEqual(len(result), 4)
+        for val in result[:2]:
+            self.assertTrue(menu.site.hostname in val)
+
+    @override_settings(WAGTAILMENUS_SITE_SPECIFIC_TEMPLATE_DIRS=True)
+    def test_get_template_names_does_not_include_site_specific_templates_if_current_site_not_in_contextual_vals(self):
+        menu = MainMenu.objects.all().first()
+        menu._contextual_vals = utils.make_contextualvals_instance(
+            url='/', current_site=None
+        )
+        result = menu.get_template_names()
+        self.assertEqual(len(result), 2)
+        for val in result:
+            self.assertTrue(menu.site.hostname not in val)
