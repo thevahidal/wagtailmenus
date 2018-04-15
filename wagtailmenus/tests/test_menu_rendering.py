@@ -1478,9 +1478,9 @@ class TestTemplateTags(TestCase):
         with self.assertRaises(SubMenuUsageError):
             self.client.get('/sub_menu-tag-used-directly/')
 
-    def test_main_menu_sub_menu_templates(self):
+    def test_main_menu_with_sub_menu_templates(self):
         """
-        Test '{% main_menu %}' output for 'Home' page when sub_menu_templates
+        Test '{% main_menu %}' output for 'Home' page when 'sub_menu_templates'
         is used to specify different templates for each level
         """
         response = self.client.get('/')
