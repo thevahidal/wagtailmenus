@@ -19,16 +19,16 @@ TEMPLATES_BY_HANDLE_DICT = {
 class TestFlatMenuClass(TestCase):
 
     def setUp(self):
-        site = Site.objects.get()
+        self.site = Site.objects.get()
         self.menus = (
             FlatMenu.objects.create(
-                site=site, handle='test-1', title="Test Menu 1"
+                site=self.site, handle='test-1', title="Test Menu 1"
             ),
             FlatMenu.objects.create(
-                site=site, handle='test-2', title="Test Menu 2"
+                site=self.site, handle='test-2', title="Test Menu 2"
             ),
             FlatMenu.objects.create(
-                site=site, handle='test-3', title="Test Menu 3"
+                site=self.site, handle='test-3', title="Test Menu 3"
             )
         )
         for menu in self.menus:
@@ -64,3 +64,25 @@ class TestFlatMenuClass(TestCase):
         menu = self.menus[2]
         self.assertNotIn(menu.handle, TEMPLATES_BY_HANDLE_DICT.keys())
         self.assertEqual(menu.get_sub_menu_template_names_from_setting(), TEMPLATE_LIST_DEFAULT)
+
+    @override_settings(WAGTAILMENUS_SITE_SPECIFIC_TEMPLATE_DIRS=True)
+    def test_get_template_names_includes_site_specific_templates_if_setting_is_true_and_current_site_is_in_contextual_vals(self):
+        menu = self.menus[0]
+        menu._contextual_vals = utils.make_contextualvals_instance(
+            url='/', current_site=self.site
+        )
+        result = menu.get_template_names()
+        self.assertEqual(len(result), 14)
+        for val in result[:7]:
+            self.assertTrue(self.site.hostname in val)
+
+    @override_settings(WAGTAILMENUS_SITE_SPECIFIC_TEMPLATE_DIRS=True)
+    def test_get_template_names_does_not_include_site_specific_templates_if_current_site_not_in_contextual_vals(self):
+        menu = self.menus[0]
+        menu._contextual_vals = utils.make_contextualvals_instance(
+            url='/', current_site=None
+        )
+        result = menu.get_template_names()
+        self.assertEqual(len(result), 7)
+        for val in result:
+            self.assertFalse(self.site.hostname in val)
