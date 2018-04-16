@@ -138,6 +138,10 @@ class TestMainMenuClass(TestCase):
         self.assertEqual(marvel_item.link_page.title, 'Marvel Comics')
         self.assertEqual(marvel_item.sort_order, 6)
 
+    # ------------------------------------------------------------------------
+    # get_sub_menu_template_names()
+    # ------------------------------------------------------------------------
+
     def test_get_sub_menu_template_names_from_setting_returns_none_if_setting_not_set(self):
         self.assertEqual(
             MainMenu.get_sub_menu_template_names_from_setting(), None
@@ -151,6 +155,10 @@ class TestMainMenuClass(TestCase):
             MainMenu.get_sub_menu_template_names_from_setting(),
             utils.SUB_MENU_TEMPLATE_LIST
         )
+
+    # ------------------------------------------------------------------------
+    # get_specified_sub_menu_template_name()
+    # ------------------------------------------------------------------------
 
     def test_get_specified_sub_menu_template_name_returns_none_if_no_templates_specified(self):
         menu = self.get_random_menu_instance_with_opt_vals_set()
@@ -251,7 +259,47 @@ class TestMainMenuClass(TestCase):
             utils.SINGLE_ITEM_SUB_MENU_TEMPLATE_LIST[0]
         )
 
-    def test_get_template_names_does_not_include_site_specific_templates_if_by_default(self):
+    # ------------------------------------------------------------------------
+    # get_sub_menu_template_names()
+    # ------------------------------------------------------------------------
+
+    def test_get_sub_menu_template_names_does_not_include_site_specific_templates_by_default(self):
+        menu = MainMenu.objects.all().first()
+        menu._contextual_vals = utils.make_contextualvals_instance(
+            current_site=menu.site
+        )
+        result = menu.get_sub_menu_template_names()
+        self.assertEqual(len(result), 5)
+        for val in result:
+            self.assertFalse(menu.site.hostname in val)
+
+    @override_settings(WAGTAILMENUS_SITE_SPECIFIC_TEMPLATE_DIRS=True)
+    def test_get_sub_menu_template_names_includes_site_specific_templates_if_setting_is_true_and_current_site_is_in_contextual_vals(self):
+        menu = MainMenu.objects.all().first()
+        menu._contextual_vals = utils.make_contextualvals_instance(
+            current_site=menu.site
+        )
+        result = menu.get_sub_menu_template_names()
+        self.assertEqual(len(result), 9)
+        for val in result[:4]:
+            self.assertTrue(menu.site.hostname in val)
+
+    @override_settings(WAGTAILMENUS_SITE_SPECIFIC_TEMPLATE_DIRS=True)
+    def test_get_sub_menu_template_names_does_not_include_site_specific_templates_if_current_site_not_in_contextual_vals(self):
+        menu = MainMenu.objects.all().first()
+        menu._contextual_vals = utils.make_contextualvals_instance(
+            current_site=None
+        )
+        result = menu.get_sub_menu_template_names()
+        self.assertEqual(len(result), 5)
+        for val in result:
+            self.assertTrue(menu.site.hostname not in val)
+
+    # ------------------------------------------------------------------------
+    # get_template_names()
+    # ------------------------------------------------------------------------
+
+    def test_get_template_names_does_not_include_site_specific_templates_by_default(self):
         menu = MainMenu.objects.all().first()
         menu._contextual_vals = utils.make_contextualvals_instance(
             url='/', current_site=menu.site

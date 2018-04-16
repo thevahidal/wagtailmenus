@@ -34,6 +34,10 @@ class TestFlatMenuClass(TestCase):
         for menu in self.menus:
             menu._option_vals = utils.make_optionvals_instance()
 
+    # ------------------------------------------------------------------------
+    # get_sub_menu_template_names_from_setting()
+    # ------------------------------------------------------------------------
+
     def test_get_sub_menu_template_names_from_setting_returns_none_if_setting_not_set(self):
         for menu in self.menus:
             self.assertEqual(
@@ -65,10 +69,50 @@ class TestFlatMenuClass(TestCase):
         self.assertNotIn(menu.handle, TEMPLATES_BY_HANDLE_DICT.keys())
         self.assertEqual(menu.get_sub_menu_template_names_from_setting(), TEMPLATE_LIST_DEFAULT)
 
-    def test_get_template_names_does_not_include_site_specific_templates_if_by_default(self):
+    # ------------------------------------------------------------------------
+    # get_sub_menu_template_names()
+    # ------------------------------------------------------------------------
+
+    def test_get_sub_menu_template_names_does_not_include_site_specific_templates_by_default(self):
         menu = self.menus[0]
         menu._contextual_vals = utils.make_contextualvals_instance(
-            url='/', current_site=self.site
+            current_site=self.site
+        )
+        result = menu.get_sub_menu_template_names()
+        self.assertEqual(len(result), 11)
+        for val in result:
+            self.assertFalse(self.site.hostname in val)
+
+    @override_settings(WAGTAILMENUS_SITE_SPECIFIC_TEMPLATE_DIRS=True)
+    def test_get_sub_menu_template_names_includes_site_specific_templates_if_setting_is_true_and_current_site_is_in_contextual_vals(self):
+        menu = self.menus[0]
+        menu._contextual_vals = utils.make_contextualvals_instance(
+            current_site=self.site
+        )
+        result = menu.get_sub_menu_template_names()
+        self.assertEqual(len(result), 19)
+        for val in result[:8]:
+            self.assertTrue(self.site.hostname in val)
+
+    @override_settings(WAGTAILMENUS_SITE_SPECIFIC_TEMPLATE_DIRS=True)
+    def test_get_sub_menu_template_names_does_not_include_site_specific_templates_if_current_site_not_in_contextual_vals(self):
+        menu = self.menus[0]
+        menu._contextual_vals = utils.make_contextualvals_instance(
+            current_site=None
+        )
+        result = menu.get_sub_menu_template_names()
+        self.assertEqual(len(result), 11)
+        for val in result:
+            self.assertTrue(self.site.hostname not in val)
+
+    # ------------------------------------------------------------------------
+    # get_template_names()
+    # ------------------------------------------------------------------------
+
+    def test_get_template_names_does_not_include_site_specific_templates_by_default(self):
+        menu = self.menus[0]
+        menu._contextual_vals = utils.make_contextualvals_instance(
+            current_site=self.site
         )
         result = menu.get_template_names()
         self.assertEqual(len(result), 7)
@@ -79,7 +123,7 @@ class TestFlatMenuClass(TestCase):
     def test_get_template_names_includes_site_specific_templates_if_setting_is_true_and_current_site_is_in_contextual_vals(self):
         menu = self.menus[0]
         menu._contextual_vals = utils.make_contextualvals_instance(
-            url='/', current_site=self.site
+            current_site=self.site
         )
         result = menu.get_template_names()
         self.assertEqual(len(result), 14)
@@ -90,7 +134,7 @@ class TestFlatMenuClass(TestCase):
     def test_get_template_names_does_not_include_site_specific_templates_if_current_site_not_in_contextual_vals(self):
         menu = self.menus[0]
         menu._contextual_vals = utils.make_contextualvals_instance(
-            url='/', current_site=None
+            current_site=None
         )
         result = menu.get_template_names()
         self.assertEqual(len(result), 7)
