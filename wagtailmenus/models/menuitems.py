@@ -37,6 +37,7 @@ class AbstractMenuItem(models.Model, MenuItem):
         blank=True,
         null=True,
         on_delete=models.CASCADE,
+        related_name='+',
     )
     link_url = models.CharField(
         verbose_name=_('link to a custom URL'),
