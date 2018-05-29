@@ -78,6 +78,7 @@ class FlatMenuAdmin(ModelAdmin):
     ordering = ('-site__is_default_site', 'site__hostname', 'handle')
     create_view_class = FlatMenuCreateView
     edit_view_class = FlatMenuEditView
+    copy_view_class = FlatMenuCopyView
     add_to_settings_menu = True
 
     def get_form_view_extra_css(self):
@@ -87,7 +88,7 @@ class FlatMenuAdmin(ModelAdmin):
 
     def copy_view(self, request, instance_pk):
         kwargs = {'model_admin': self, 'instance_pk': instance_pk}
-        return FlatMenuCopyView.as_view(**kwargs)(request)
+        return self.copy_view_class.as_view(**kwargs)(request)
 
     def get_admin_urls_for_registration(self):
         urls = super().get_admin_urls_for_registration()
