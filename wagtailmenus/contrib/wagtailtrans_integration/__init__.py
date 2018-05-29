@@ -1,0 +1,1 @@
+default_app_config = 'wagtailmenus.contrib.wagtailtrans_integration.apps.WagtailmenusIntegrationAppConfig'
