@@ -101,13 +101,13 @@ class FlatMenuAdmin(ModelAdmin):
 
     def get_list_filter(self, request):
         if self.is_multisite_listing(request):
-            return ('site', 'handle')
-        return ()
+            return ['site', 'handle']
+        return []
 
     def get_list_display(self, request):
         if self.is_multisite_listing(request):
-            return ('title', 'handle_formatted', 'site', 'items')
-        return ('title', 'handle_formatted', 'items')
+            return ['title', 'handle_formatted', 'site', 'items']
+        return ['title', 'handle_formatted', 'items']
 
     def handle_formatted(self, obj):
         return mark_safe('<code>%s</code>' % obj.handle)
