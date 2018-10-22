@@ -1246,6 +1246,11 @@ class AbstractMainMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
         ))
     )
 
+    api_fields = (
+        'site',
+        'url',
+    )
+
     class Meta:
         abstract = True
         verbose_name = _("main menu")
@@ -1351,6 +1356,14 @@ class AbstractFlatMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
             "different <code>use_specific</code> value to the <code>"
             "{% flat_menu %}</code> tag in your templates."
         ))
+    )
+
+    api_fields = (
+        'site',
+        'handle',
+        'title',
+        'heading',
+        'url',
     )
 
     class Meta:
