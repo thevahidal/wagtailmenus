@@ -268,7 +268,7 @@ class Menu:
             'The get_instance_for_rendering() class method is deprecated in '
             'v2.12 and will be removed in v3. For model-based menu classes, '
             'use get_from_collected_values() instead, and for non model-based '
-            'menu classes, use create_from_collected_values().', 
+            'menu classes, use create_from_collected_values().',
             category=RemovedInWagtailMenus3Warning
         )
         if issubclass(cls, models.Model):
@@ -1269,6 +1269,11 @@ class AbstractMainMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
         ))
     )
 
+    api_fields = (
+        'site',
+        'url',
+    )
+
     class Meta:
         abstract = True
         verbose_name = _("main menu")
@@ -1374,6 +1379,14 @@ class AbstractFlatMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
             "different <code>use_specific</code> value to the <code>"
             "{% flat_menu %}</code> tag in your templates."
         ))
+    )
+
+    api_fields = (
+        'site',
+        'handle',
+        'title',
+        'heading',
+        'url',
     )
 
     class Meta:
