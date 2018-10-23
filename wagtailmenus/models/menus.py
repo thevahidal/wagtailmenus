@@ -175,7 +175,7 @@ class Menu:
         return ContextualVals(
             context,
             context['request'],
-            get_site_from_request(context['request']),
+            context.get('current_site', get_site_from_request(context['request'])),
             context.get('current_level', 0) + 1,
             context.get('original_menu_tag', cls.related_templatetag_name),
             context.get('original_menu_instance'),
