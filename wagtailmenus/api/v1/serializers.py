@@ -77,13 +77,12 @@ class MainMenuSerializer(MenuSerializer):
 
 
 class FlatMenuSerializer(MenuSerializer):
-    site = Field()
-    handle = Field()
+    pass
 
 
 class ChildrenMenuSerializer(MenuSerializer):
-    parent_page = Field()
+    pass
 
 
 class SectionMenuSerializer(MenuSerializer):
-    section_root_page = Field()
+    pass
