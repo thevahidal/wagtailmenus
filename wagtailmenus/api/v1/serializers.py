@@ -5,7 +5,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import Serializer
 from wagtail.core.models import Page, Site
 
-from wagtailmenus.conf import settings
+from wagtailmenus.conf import constants, settings
 
 main_menu_model = settings.models.MAIN_MENU_MODEL
 flat_menu_model = settings.models.FLAT_MENU_MODEL
@@ -36,13 +36,17 @@ class RenderViewArgumentSerializer(Serializer):
 
 
 class ModelBasedMenuArgumentSerializer(RenderViewArgumentSerializer):
-    max_levels = fields.IntegerField(allow_empty=True)
-    use_specific = fields.ChoiceField(allow_empty=True)
+    USE_SPECIFIC_CHOICES = (
+        ('', _('Use menu object defaults')),
+    ) + constants.USE_SPECIFIC_CHOICES
+
+    max_levels = fields.IntegerField(min_value=1, max_value=5, allow_null=True)
+    use_specific = fields.ChoiceField(choices=USE_SPECIFIC_CHOICES, allow_blank=True)
 
 
 class ClassBasedMenuArgumentSerializer(RenderViewArgumentSerializer):
-    max_levels = fields.IntegerField()
-    use_specific = fields.ChoiceField()
+    max_levels = fields.IntegerField(min_value=1, max_value=5)
+    use_specific = fields.ChoiceField(choices=constants.USE_SPECIFIC_CHOICES)
 
 
 class MainMenuArgumentSerializer(ModelBasedMenuArgumentSerializer):
