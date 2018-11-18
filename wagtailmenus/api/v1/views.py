@@ -1,223 +1,233 @@
-from rest_framework import exceptions
-from rest_framework import viewsets
+from django.http import Http404
+from django.test import RequestFactory
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from wagtail.core.models import Page
 
 from wagtailmenus.conf import settings
 
-from . import forms
 from . import serializers
 
 
-class MenuViewSetMixin:
-    default_max_levels = None
-    default_use_specific = None
-    default_apply_active_classes = True
-    default_allow_repeating_parents = True
-    default_use_absolute_page_urls = False
-    detail_view_url_kwargs = None
-    detail_view_serializer_class = None
-    detail_view_option_validator_form_class = None
-    model = None
+class MenuRenderView(APIView):
+    menu_class = None
+    # serializers
+    argument_serializer_class = None
+    menu_serializer_class = None
+    # argument default values
+    max_levels_default = None
+    use_specific_default = None
+    apply_active_classes_default = True
+    allow_repeating_parents_default = True
+    use_absolute_page_urls_default = False
 
-    @classmethod
-    def get_model(cls):
-        if cls.model is None:
+    def get_menu_class(self):
+        if self.menu_class is None:
             raise NotImplementedError(
-                "For subclasses of MenuViewSetMixin, you must set the 'model' "
-                "attribute or override the get_model() class method."
+                "For subclasses of MenuRenderView, you must set the "
+                "'menu_class' attribute or override the "
+                "get_menu_class() class method."
             )
-        return cls.model
+        return self.menu_class
 
-    def get_detail_view_serializer_class(self):
-        if self.detail_view_serializer_class is None:
+    def get_argument_serializer_class(self):
+        if self.argument_serializer_class is None:
             raise NotImplementedError(
-                "For subclasses of MenuViewSetMixin, you must set the "
-                "'detail_view_serializer_class' attribute or override the "
-                "get_detail_view_serializer_class() class method."
+                "For subclasses of MenuRenderView, you must set the "
+                "'argument_serializer_class' attribute or override the "
+                "get_argument_serializer_class) class method."
             )
-        return self.detail_view_serializer_class
+        return self.argument_serializer_class
 
-    def get_detail_view_serializer(self, *args, **kwargs):
-        serializer_class = self.get_detail_view_serializer_class()
-        kwargs['context'] = self.get_serializer_context()
-        return serializer_class(*args, **kwargs)
+    def get_argument_serializer(self, request, *args, **kwargs):
+        cls = self.get_argument_serializer_class()
+        kwargs['context'] = self.get_argument_serializer_context()
 
-    def retrieve(self, request, **kwargs):
-        context_data = self.get_detail_view_context_data(request, kwargs)
-        instance = self.get_object(context_data)
-        serializer = self.get_detail_view_serializer(instance)
-        return Response(serializer.data)
+        # Mix default argument values into GET where not specified
+        data = request.GET.copy()
+        for key, val in self.get_default_argument_values():
+            if key not in data:
+                data[key] = val
 
-    def get_detail_view_context_data(self, request, **kwargs):
-        initial_data = self.get_detail_view_context_defaults()
-        initial_data.update(kwargs)
-        form_class = self.get_detail_view_context_validator_form()
-        form = form_class(data=request.GET, initial=initial_data)
-        if not form.is_valid():
-            raise exceptions.ValidationError(form.errors)
-        return form.cleaned_data
+        return cls(data=data, *args, **kwargs)
 
-    def get_detail_view_context_defaults(self):
+    def get_argument_serializer_context(self):
         return {
-            'max_levels': self.default_max_levels,
-            'use_specific': self.default_use_specific,
-            'apply_active_classes': self.default_apply_active_classes,
-            'allow_repeating_parents': self.default_allow_repeating_parents,
-            'use_absolute_page_urls': self.default_use_absolute_page_urls,
-            'site': None,
-            'current_page': None,
+            'request': self.request,
+            'view': self,
         }
 
-    def get_detail_view_url_kwargs(self):
-        if self.detail_view_url_kwargs is None:
-            raise NotImplementedError(
-                "For subclasses of MenuViewSetMixin, you must set the "
-                "'detail_view_url_kwargs' attribute or override the "
-                "get_detail_view_url_kwargs() method.")
-        return self.detail_view_url_kwargs
+    def get_default_argument_values(self):
+        defaults = {
+            'max_levels': self.max_levels_default,
+            'use_specific': self.use_specific_default,
+            'apply_active_classes': self.apply_active_classes_default,
+            'allow_repeating_parents': self.allow_repeating_parents_default,
+            'use_absolute_page_urls': self.use_absolute_page_urls_default,
+        }
+        return {key: val for key, val in defaults if val is not None}
 
-    def get_detail_view_context_validator_form(self):
-        if self.detail_view_option_validator_form_class is None:
+    def get_menu_serializer_class(self):
+        if self.menu_serializer_class is None:
             raise NotImplementedError(
-                "For subclasses of MenuViewSetMixin, you must set the "
-                "'detail_view_option_validator_form_class' attribute or "
-                "override the get_detail_view_option_validator_form_class() "
-                "method."
+                "For subclasses of MenuRenderView, you must set the "
+                "'menu_serializer_class' attribute or override the "
+                "get_menu_serializer_class() class method."
             )
-        return self.detail_view_option_validator_form_class
+        return self.menu_serializer_class
 
-    def get_object(self, **context_data):
+    def get_menu_serializer(self, instance, *args, **kwargs):
+        cls = self.get_menu_serializer_class()
+        kwargs['context'] = self.get_menu_serializer_context()
+        return cls(instance=instance, *args, **kwargs)
+
+    def get_menu_serializer_context(self):
+        return {
+            'request': self.request,
+            'format': self.format_kwarg,
+            'view': self,
+        }
+
+    def get(self, request, *args, **kwargs):
+        # Ensure all necessary argument values are present and valid
+        arg_serializer = self.get_argument_serializer(request, *args, **kwargs)
+
+        # Raise errors if option values are invalid
+        arg_serializer.is_valid(raise_exception=True)
+
+        # Get a menu instance using the valid data
+        menu_instance = self.get_menu_instance(request, arg_serializer.data)
+
+        # Create a serializer for this menu instance
+        menu_serializer = self.get_menu_serializer(menu_instance, *args, **kwargs)
+        return Response(menu_serializer.data)
+
+    def get_menu_instance(self, request, arg_data):
         """
         The Menu classes themselves are responsible for getting/creating menu
         instances and preparing them for rendering. So, the role of this
         method is to bundle up all available data into a format that
         ``Menu._get_render_prepared_object()`` will understand, and call that.
         """
+        site = arg_data['site']
+        current_page, section_root, ancestor_ids = self.derive_page_data_from_argument_data(
+            arg_data
+        )
 
         # Menus are typically rendered from an existing ``RequestContext``
         # object, which we do not have. However, we can provide a dictionary
         # with a similar-looking data structure.
         context = {
-            'request': self.request,
-            'current_site': context_data.pop('site'),
+            'request': request,
+            'current_site': site,
             # Typically, this would be added by wagtailmenus' context processor
             'wagtailmenus_vals': {
-                'current_page': context_data.pop('current_page'),
-                'section_root': context_data.pop('section_root_page'),
-                'current_page_ancestor_ids': context_data.pop('current_page_ancestor_ids'),
+                'current_page': current_page,
+                'section_root': section_root,
+                'current_page_ancestor_ids': ancestor_ids,
             }
         }
 
-        # The remaining values can safely be considered as 'option values'
-        option_values = context_data
+        cls = self.get_menu_class()
+        option_values = self.get_option_values_from_arg_data(arg_data, site, current_page)
+        return cls._get_render_prepared_object(context, **option_values)
 
+    def derive_page_data_from_arg_data(self, arg_data):
+        site = arg_data['site']
+        apply_active_classes = arg_data['apply_active_classes']
+        url = arg_data['current_url']
+
+        if not url or not apply_active_classes:
+            return None, None, ()
+
+        # derive current page (or closest) and ancestor page ids
+        current_page = None
+        best_match_page = None
+        ancestor_ids = ()
+        section_root_depth = settings.SECTION_ROOT_DEPTH
+        path_components = [pc for pc in url.split('/') if pc]
+
+        # Create a HttpRequest to pass to Page.route()
+        rf = RequestFactory()
+        request = rf.get(url)
+        # if the active request is authenticated, this one should be too
+        request.user = self.request.user
+
+        # Keep trying to find a page using the path components until there
+        # are no components left, or a page has been identified
+        first_run = True
+        while path_components and best_match_page is None:
+            try:
+                best_match_page, args, kwargs = site.root_page.specific.route(
+                    request, path_components)
+                ancestor_ids = set(
+                    best_match_page.get_ancestors(inclusive=True)
+                    .filter(depth__gte=section_root_depth)
+                    .values_list('id', flat=True)
+                )
+                if first_run:
+                    # A page was found matching the exact path, so it's
+                    # safe to assume it's the 'current page'
+                    current_page = best_match_page
+                    ancestor_ids.remove(current_page.id)
+            except Http404:
+                # No match found, so remove a path component and try again
+                path_components.pop()
+            first_run = False
+
+        # derive section root
+        section_root = None
+        page = current_page or best_match_page
+        if page and page.depth == section_root_depth:
+            section_root = page
+        elif page and page.depth > section_root_depth:
+            section_root = page.get_ancestors().filter(
+                depth__exact=section_root_depth).first()
+
+        return current_page, section_root, ancestor_ids
+
+    def derive_option_values_from_arg_data(self, arg_data, site, current_page):
+        # Any remaining values can safely be considered as 'option values'
+        option_values = arg_data.copy()
         # Setting this to allow the serializer to render multi-level menu items
         option_values['add_sub_menus_inline'] = True
-
-        return self.get_model()._get_render_prepared_object(context, **option_values)
-
-
-class MainMenuViewSet(MenuViewSetMixin, viewsets.ReadOnlyModelViewSet):
-    base_name = "main_menu"
-    model = settings.models.MAIN_MENU_MODEL
-    serializer_class = serializers.MainMenuSerializer
-
-    detail_view_serializer_class = serializers.MainMenuDetailSerializer
-    detail_view_option_validator_form_class = forms.MainMenuOptionValidatorForm
-
-    def get_queryset(self):
-        # Only used for listing
-        return self.get_model().objects.all()
-
-    def retrieve(self, request, site_id):
-        return super().retrieve(request, site_id=site_id)
+        return option_values
 
 
-class FlatMenuViewSet(MenuViewSetMixin, viewsets.ReadOnlyModelViewSet):
-    base_name = "flat_menu"
-    model = settings.models.FLAT_MENU_MODEL
-    serializer_class = serializers.FlatMenuSerializer
-
-    detail_view_serializer_class = serializers.FlatMenuDetailSerializer
-    detail_view_option_validator_form_class = forms.FlatMenuOptionValidatorForm
-
-    def retrieve(self, request, site_id, handle):
-        return super().retrieve(request, site_id=site_id, handle=handle)
-
-    def get_queryset(self):
-        # Only used for listing
-        return self.get_model().objects.all()
+class MainMenuRenderView(MenuRenderView):
+    menu_class = settings.models.MAIN_MENU_MODEL
+    # serializers
+    argument_serializer_class = serializers.MainMenuArgumentSerializer
+    menu_serializer_class = serializers.MainMenuSerializer
 
 
-class DetailOnlyMenuViewSet(MenuViewSetMixin, viewsets.ViewSet):
-    pass
+class FlatMenuRenderView(MenuRenderView):
+    menu_class = settings.models.MAIN_MENU_MODEL
+    # serializers
+    argument_serializer_class = serializers.FlatMenuArgumentSerializer
+    menu_serializer_class = serializers.FlatMenuSerializer
 
 
-class ChildrenMenuViewSet(DetailOnlyMenuViewSet):
-    base_name = 'children_menu'
-    model = settings.objects.CHILDREN_MENU_CLASS
+class ChildrenMenuRenderView(MenuRenderView):
+    menu_class = settings.objects.CHILDREN_MENU_CLASS
+    # serializers
+    argument_serializer_class = serializers.ChildrenMenuArgumentSerializer
+    menu_serializer_class = serializers.ChildrenMenuSerializer
+    # argument default overrides
+    max_levels_default = settings.DEFAULT_CHILDREN_MENU_MAX_LEVELS
+    use_specific_default = settings.DEFAULT_CHILDREN_MENU_USE_SPECIFIC
+    apply_active_classes_default = False
 
-    detail_view_serializer_class = serializers.ChildrenMenuSerializer
-    detail_view_option_validator_form_class = forms.ChildrenMenuOptionValidatorForm
-
-    # default option value overrides
-    default_apply_active_classes = False
-    default_max_levels = settings.DEFAULT_CHILDREN_MENU_MAX_LEVELS
-    default_use_specific = settings.DEFAULT_CHILDREN_MENU_USE_SPECIFIC
-
-    def retrieve(self, request, site_id, parent_page_id):
-        return super().retrieve(request, site_id=site_id, parent_page_id=parent_page_id)
-
-    def clean_detail_url_kwargs(self, url_kwargs):
-        url_kwargs = super().clean_detail_url_kwargs(url_kwargs)
-
-        # Ensure 'parent_page' is a valid page
-        parent_page_id = url_kwargs['parent_page']
-        try:
-            url_kwargs['parent_page'] = Page.objects.get(id=parent_page_id)
-        except:
-            raise exceptions.ValidationError(
-                "No page could be found matching the ID '%s' supplied for "
-                "'parent_page'." % parent_page_id
-            )
-        return url_kwargs
+    def derive_option_values_from_arg_data(self, arg_data, site, current_page):
+        option_values = super().derive_option_values_from_arg_data(arg_data)
+        if not option_values.get('parent_page'):
+            option_values['parent_page'] = current_page
 
 
-class SectionMenuViewSet(DetailOnlyMenuViewSet):
-    base_name = 'section_menu'
-    model = settings.objects.SECTION_MENU_CLASS
-
-    detail_view_serializer_class = serializers.SectionMenuSerializer
-    detail_view_option_validator_form_class = forms.SectionMenuOptionValidatorForm
-
-    # default option value overrides
-    default_max_levels = settings.DEFAULT_SECTION_MENU_MAX_LEVELS
-    default_use_specific = settings.DEFAULT_SECTION_MENU_USE_SPECIFIC
-
-    def retrieve(self, request, site_id, current_page_id):
-        return super().retrieve(request, site_id=site_id, current_page_id=current_page_id)
-
-    def clean_detail_url_kwargs(self, url_kwargs):
-        url_kwargs = super().clean_detail_url_kwargs(url_kwargs)
-
-        # Ensure 'current_page' is a valid page
-        current_page_id = url_kwargs['current_page']
-        try:
-            current_page = Page.objects.get(id=current_page_id)
-            url_kwargs['current_page'] = current_page
-        except:
-            raise exceptions.ValidationError(
-                "No page could be found matching the ID '%s' supplied for "
-                "'current_page'." % url_kwargs['current_page']
-            )
-
-        # Identify 'section_root_page' from the 'current_page'
-        if current_page.depth >= settings.SECTION_ROOT_DEPTH:
-            if current_page.depth == settings.SECTION_ROOT_DEPTH:
-                section_root = current_page
-            else:
-                section_root = current_page.get_ancestors().filter(
-                    depth__exact=settings.SECTION_ROOT_DEPTH).get()
-            url_kwargs['section_root_page'] = section_root.specific()
-        return url_kwargs
+class SectionMenuRenderView(MenuRenderView):
+    menu_class = settings.objects.SECTION_MENU_CLASS
+    # serializers
+    argument_serializer_class = serializers.SectionMenuArgumentSerializer
+    menu_serializer_class = serializers.SectionMenuSerializer
+    # argument default overrides
+    max_levels_default = settings.DEFAULT_SECTION_MENU_MAX_LEVELS
+    use_specific_default = settings.DEFAULT_SECTION_MENU_USE_SPECIFIC

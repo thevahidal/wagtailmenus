@@ -1,35 +1,85 @@
-from rest_framework import serializers
+from django.test import RequestFactory
+from django.utils.translation import ugettext_lazy as _
+from rest_framework import fields
+from rest_framework.exceptions import ValidationError
+from rest_framework.serializers import Serializer
+from wagtail.core.models import Page, Site
+
 from wagtailmenus.conf import settings
 
 main_menu_model = settings.models.MAIN_MENU_MODEL
 flat_menu_model = settings.models.FLAT_MENU_MODEL
 
 
-class MainMenuSerializer(serializers.HyperlinkedModelSerializer):
+class RenderViewArgumentSerializer(Serializer):
+    current_url = fields.URLField()
+    apply_active_classes = fields.BooleanField()
+    allow_repeating_parents = fields.BooleanField()
+    use_absolute_page_urls = fields.BooleanField()
 
-    class Meta:
-        model = main_menu_model
-        fields = main_menu_model.api_fields
+    def to_internal_value(self, data):
+        """
+        Overrides Serializer.to_internal_value() to allow us to derive a
+        ``wagtail.core.models.Site`` object from the 'current_url' value and
+        include it as 'site' in the return value.
+        """
+        result = super().to_internal_value(data)
+        rf = RequestFactory()
+        request = rf.get(result['current_url'])
+        try:
+            result['site'] = Site.find_for_request(request)
+        except Site.DoesNotExist:
+            raise ValidationError({'current_url': _(
+                'No site could be derived this value'
+            )})
+        return result
 
 
-class MainMenuDetailSerializer(MainMenuSerializer):
+class ModelBasedMenuArgumentSerializer(RenderViewArgumentSerializer):
+    max_levels = fields.IntegerField(allow_empty=True)
+    use_specific = fields.ChoiceField(allow_empty=True)
+
+
+class ClassBasedMenuArgumentSerializer(RenderViewArgumentSerializer):
+    max_levels = fields.IntegerField()
+    use_specific = fields.ChoiceField()
+
+
+class MainMenuArgumentSerializer(ModelBasedMenuArgumentSerializer):
     pass
 
 
-class FlatMenuSerializer(serializers.HyperlinkedModelSerializer):
-
-    class Meta:
-        model = flat_menu_model
-        fields = flat_menu_model.api_fields
+class FlatMenuArgumentSerializer(ModelBasedMenuArgumentSerializer):
+    handle = fields.SlugField()
 
 
-class FlatMenuDetailSerializer(FlatMenuSerializer):
+class ChildrenMenuArgumentSerializer(ClassBasedMenuArgumentSerializer):
+    parent_page = fields.RelatedField(
+        queryset=Page.objects.all(),
+        allow_empty=True
+    )
+
+
+class SectionMenuArgumentSerializer(ClassBasedMenuArgumentSerializer):
     pass
 
 
-class ChildrenMenuSerializer(serializers.Serializer):
+class MenuSerializer(Serializer):
     pass
 
 
-class SectionMenuSerializer(serializers.Serializer):
+class MainMenuSerializer(MenuSerializer):
     pass
+
+
+class FlatMenuSerializer(MenuSerializer):
+    site = Field()
+    handle = Field()
+
+
+class ChildrenMenuSerializer(MenuSerializer):
+    parent_page = Field()
+
+
+class SectionMenuSerializer(MenuSerializer):
+    section_root_page = Field()
