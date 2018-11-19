@@ -117,7 +117,7 @@ class RenderMenuView(APIView):
             }
         }
         cls = self.get_menu_class()
-        data['add_sub_menus_inline'] = True
+        data['add_sub_menus_inline'] = True  # This should always be True
         menu_instance = cls._get_render_prepared_object(dummy_context, **data)
         if menu_instance is None:
             raise NotFound(_(
