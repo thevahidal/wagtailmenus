@@ -1,16 +1,18 @@
+from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from wagtailmenus.conf import settings
 
+from . import forms
 from . import serializers
 
 
 class RenderMenuView(APIView):
     menu_class = None
-    # serializers
-    argument_serializer_class = None
+    arg_validator_form_class = None
     menu_serializer_class = None
+
     # argument default values
     max_levels_default = None
     use_specific_default = None
@@ -27,43 +29,35 @@ class RenderMenuView(APIView):
             )
         return self.menu_class
 
-    def get_argument_serializer_class(self):
-        if self.argument_serializer_class is None:
+    def get_arg_validator_form_class(self):
+        if self.arg_validator_form_class is None:
             raise NotImplementedError(
                 "For subclasses of RenderMenuView, you must set the "
-                "'argument_serializer_class' attribute or override the "
-                "get_argument_serializer_class) class method."
+                "'arg_validator_form_class' attribute or override the "
+                "get_arg_validator_form_class) class method."
             )
-        return self.argument_serializer_class
+        return self.arg_validator_form_class
 
-    def get_argument_serializer(self, request, *args, **kwargs):
-        cls = self.get_argument_serializer_class()
-        kwargs['context'] = self.get_argument_serializer_context()
+    def get_arg_validator_form(self, request, *args, **kwargs):
+        init_kwargs = self.get_arg_validator_form_kwargs(request)
+        return self.get_arg_validator_form_class()(**init_kwargs)
 
-        # Mix default argument values into GET where not specified
-        data = request.GET.copy()
-        defaults = self.get_default_argument_values()
-        for key in defaults:
-            if key not in data:
-                data[key] = defaults[key]
-
-        return cls(data=data, *args, **kwargs)
-
-    def get_argument_serializer_context(self):
+    def get_arg_validator_form_kwargs(self, request):
         return {
-            'request': self.request,
+            'data': request.GET,
+            'initial': self.get_arg_validator_form_initial(request),
+            'request': request,
             'view': self,
         }
 
-    def get_default_argument_values(self):
-        defaults = {
+    def get_arg_validator_form_initial(self, request):
+        return {
             'max_levels': self.max_levels_default,
             'use_specific': self.use_specific_default,
             'apply_active_classes': self.apply_active_classes_default,
             'allow_repeating_parents': self.allow_repeating_parents_default,
             'use_absolute_page_urls': self.use_absolute_page_urls_default,
         }
-        return {key: val for key, val in defaults.items() if val is not None}
 
     def get_menu_serializer_class(self):
         if self.menu_serializer_class is None:
@@ -88,25 +82,27 @@ class RenderMenuView(APIView):
 
     def get(self, request, *args, **kwargs):
         # Ensure all necessary argument values are present and valid
-        arg_serializer = self.get_argument_serializer(request, *args, **kwargs)
+        form = self.get_arg_validator_form(request, *args, **kwargs)
 
-        # Raise errors if option values are invalid
-        arg_serializer.is_valid(raise_exception=True)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
 
         # Get a menu instance using the valid data
-        menu_instance = self.get_menu_instance(request, arg_serializer.validated_data)
+        menu_instance = self.get_menu_instance(request, form)
 
         # Create a serializer for this menu instance
         menu_serializer = self.get_menu_serializer(menu_instance, *args, **kwargs)
         return Response(menu_serializer.data)
 
-    def get_menu_instance(self, request, data):
+    def get_menu_instance(self, request, form):
         """
         The Menu classes themselves are responsible for getting/creating menu
         instances and preparing them for rendering. So, the role of this
         method is to bundle up all available data into a format that
         ``Menu._get_render_prepared_object()`` will understand, and call that.
         """
+
+        data = dict(form.cleaned_data)
 
         # Menus are typically rendered from an existing ``RequestContext``
         # object, which we do not have. However, we can provide a dictionary
@@ -134,39 +130,32 @@ class RenderMenuView(APIView):
 
 class RenderMainMenuView(RenderMenuView):
     menu_class = settings.models.MAIN_MENU_MODEL
-    # serializers
-    argument_serializer_class = serializers.MainMenuArgumentSerializer
+    arg_validator_form_class = forms.MainMenuArgValidatorForm
     menu_serializer_class = serializers.MainMenuSerializer
 
 
 class RenderFlatMenuView(RenderMenuView):
     menu_class = settings.models.MAIN_MENU_MODEL
-    # serializers
-    argument_serializer_class = serializers.FlatMenuArgumentSerializer
+    arg_validator_form_class = forms.FlatMenuArgValidatorForm
     menu_serializer_class = serializers.FlatMenuSerializer
 
 
 class RenderChildrenMenuView(RenderMenuView):
     menu_class = settings.objects.CHILDREN_MENU_CLASS
-    # serializers
-    argument_serializer_class = serializers.ChildrenMenuArgumentSerializer
+    arg_validator_form_class = forms.ChildrenMenuArgValidatorForm
     menu_serializer_class = serializers.ChildrenMenuSerializer
+
     # argument default overrides
     max_levels_default = settings.DEFAULT_CHILDREN_MENU_MAX_LEVELS
     use_specific_default = settings.DEFAULT_CHILDREN_MENU_USE_SPECIFIC
     apply_active_classes_default = False
 
-    def derive_option_values_from_arg_data(self, arg_data, site, current_page):
-        option_values = super().derive_option_values_from_arg_data(arg_data)
-        if not option_values.get('parent_page'):
-            option_values['parent_page'] = current_page
-
 
 class RenderSectionMenuView(RenderMenuView):
     menu_class = settings.objects.SECTION_MENU_CLASS
-    # serializers
-    argument_serializer_class = serializers.SectionMenuArgumentSerializer
+    arg_validator_form_class = forms.SectionMenuArgValidatorForm
     menu_serializer_class = serializers.SectionMenuSerializer
+
     # argument default overrides
     max_levels_default = settings.DEFAULT_SECTION_MENU_MAX_LEVELS
     use_specific_default = settings.DEFAULT_SECTION_MENU_USE_SPECIFIC

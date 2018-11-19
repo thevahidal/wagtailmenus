@@ -4,12 +4,20 @@ USE_SPECIFIC_OFF = 0
 USE_SPECIFIC_AUTO = 1
 USE_SPECIFIC_TOP_LEVEL = 2
 USE_SPECIFIC_ALWAYS = 3
+USE_SPECIFIC_VALUES = (
+    USE_SPECIFIC_OFF,
+    USE_SPECIFIC_AUTO,
+    USE_SPECIFIC_TOP_LEVEL,
+    USE_SPECIFIC_ALWAYS,
+)
 USE_SPECIFIC_CHOICES = (
     (USE_SPECIFIC_OFF, _("Off (most efficient)")),
     (USE_SPECIFIC_AUTO, _("Auto")),
     (USE_SPECIFIC_TOP_LEVEL, _("Top level")),
     (USE_SPECIFIC_ALWAYS, _("Always (least efficient)")),
 )
+
+
 MAX_LEVELS_CHOICES = (
     (1, _('1: No sub-navigation (flat)')),
     (2, _('2: Allow 1 level of sub-navigation')),
