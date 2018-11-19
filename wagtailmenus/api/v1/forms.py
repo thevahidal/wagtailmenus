@@ -107,7 +107,7 @@ class ArgValidatorForm(forms.Form):
         except Site.DoesNotExist:
             self.add_error('site', error_msg)
 
-    def derive_current_page(self, data, force_derivation=False):
+    def derive_current_page(self, data, force_derivation=False, accept_best_match=True):
         if not force_derivation and not data.get('apply_active_classes'):
             return
 
@@ -152,7 +152,7 @@ class ArgValidatorForm(forms.Form):
                 path_components.pop()
             first_run = False
 
-        if force_derivation and not data['current_page']:
+        if not accept_best_match and not data['current_page']:
             self.add_error('current_page', _(
                 "This value was not provided and could not be derived from "
                 "'current_url'."
@@ -221,17 +221,20 @@ class ChildrenMenuArgValidatorForm(MenuClassArgValidatorForm):
                 "'current_url' or 'current_page'.")
             )
 
-    def derive_current_page(self, data, force_derivation=False):
+    def derive_current_page(self, data, force_derivation=False, accept_best_match=False):
         """
         Overrides ArgValidatorForm.derive_current_page(),
         because if neither 'parent_page' or 'current_page' have been
         provided, we want to force derivation of 'current_page', so that it
         can serve as a stand-in for 'parent_page'.
+
+        A 'best match' is not a good enough stand-in for 'parent_page', so we
+        the 'accept_best_match' is False by default.
         """
         force_derivation = force_derivation or (
             not data['parent_page'] and not data['current_page']
         )
-        super().derive_current_page(data, force_derivation)
+        super().derive_current_page(data, force_derivation, accept_best_match)
 
 
 class SectionMenuArgValidatorForm(MenuClassArgValidatorForm):
@@ -259,12 +262,12 @@ class SectionMenuArgValidatorForm(MenuClassArgValidatorForm):
         If possible, derive a value for 'section_root_page' and update the
         supplied ``data`` dictionary to include it.
         """
-        page = data['current_page']
+        page = data['current_page'] or data.get('best_match_page')
         section_root_depth = settings.SECTION_ROOT_DEPTH
         if page is None or page.depth < section_root_depth:
             self.add_error('section_root_page', _(
                 "The value was not provided and cannot be derived from "
-                "'current_url' or 'current_page'"
+                "'current_url' or 'current_page'."
             ))
             return
         if page.depth > section_root_depth:
@@ -273,14 +276,17 @@ class SectionMenuArgValidatorForm(MenuClassArgValidatorForm):
         else:
             data['section_root_page'] = page
 
-    def derive_current_page(self, data, force_derivation=False):
+    def derive_current_page(self, data, force_derivation=False, accept_best_match=True):
         """
         Overrides ArgValidatorForm.derive_current_page(),
         because if neither 'section_root_page' or 'current_page' have been
         provided, we want to force derivation of 'current_page', so that we
         are able to derive 'section_root_page' from it.
+
+        A 'best match' might be good enough to derive 'section_root_page', so
+        we'll leave 'accept_best_match' as True by default.
         """
         force_derivation = force_derivation or (
             not data['section_root_page'] and not data['current_page']
         )
-        super().derive_current_page(data, force_derivation)
+        super().derive_current_page(data, force_derivation, accept_best_match)
