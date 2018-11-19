@@ -145,7 +145,8 @@ class ArgValidatorForm(forms.Form):
                     # safe to assume it's the 'current page'
                     data['current_page'] = best_match
                 else:
-                    # This will still be useful for deriving 'ancestor_ids'
+                    # This could still be useful for deriving 'ancestor_ids'
+                    # or 'section_root_page'
                     data['best_match_page'] = best_match
             except Http404:
                 if not accept_best_match:
