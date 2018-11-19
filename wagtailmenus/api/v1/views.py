@@ -1,4 +1,5 @@
-from rest_framework.exceptions import ValidationError
+from django.utils.translation import ugettext_lazy as _
+from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -118,7 +119,13 @@ class RenderMenuView(APIView):
         }
         cls = self.get_menu_class()
         data['add_sub_menus_inline'] = True
-        return cls._get_render_prepared_object(dummy_context, **data)
+        menu_instance = cls._get_render_prepared_object(dummy_context, **data)
+        if menu_instance is None:
+            raise NotFound(_(
+                "No {class_name} object could be found matching the supplied "
+                "values.").format(class_name=cls.__name__)
+            )
+        return menu_instance
 
 
 class RenderMainMenuView(RenderMenuView):
