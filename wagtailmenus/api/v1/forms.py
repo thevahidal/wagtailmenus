@@ -145,6 +145,7 @@ class ArgValidatorForm(forms.Form):
                     # safe to assume it's the 'current page'
                     data['current_page'] = best_match
                 else:
+                    # This will still be useful for deriving 'ancestor_ids'
                     data['best_match_page'] = best_match
             except Http404:
                 # Remove a path component and try again
@@ -161,7 +162,7 @@ class ArgValidatorForm(forms.Form):
         page = data['current_page'] or data.get('best_match_page')
         if page:
             data['ancestor_page_ids'] = set(
-                page.get_ancestors(inclusive=bool('best_match_page' in data))
+                page.get_ancestors(inclusive=data['current_page'] is None)
                 .filter(depth__gte=settings.SECTION_ROOT_DEPTH)
                 .values_list('id', flat=True)
             )
