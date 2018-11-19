@@ -120,13 +120,6 @@ class RenderMenuView(APIView):
         data['add_sub_menus_inline'] = True
         return cls._get_render_prepared_object(dummy_context, **data)
 
-    def derive_option_values_from_arg_data(self, arg_data, site, current_page):
-        # Any remaining values can safely be considered as 'option values'
-        option_values = arg_data.copy()
-        # Setting this to allow the serializer to render multi-level menu items
-        option_values['add_sub_menus_inline'] = True
-        return option_values
-
 
 class RenderMainMenuView(RenderMenuView):
     menu_class = settings.models.MAIN_MENU_MODEL
