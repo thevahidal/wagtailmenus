@@ -186,6 +186,7 @@ class MainMenuArgValidatorForm(MenuModelArgValidatorForm):
 
 class FlatMenuArgValidatorForm(MenuModelArgValidatorForm):
     handle = forms.SlugField()
+    fall_back_to_default_site_menus = forms.BooleanField(required=False)
 
 
 class ChildrenMenuArgValidatorForm(MenuClassArgValidatorForm):
