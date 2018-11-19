@@ -211,8 +211,8 @@ class Menu:
             option_vals.extra['fall_back_to_default_site_menus']
         """
         return OptionVals(
-            kwargs.pop('max_levels'),
-            kwargs.pop('use_specific'),
+            kwargs.pop('max_levels', None),
+            kwargs.pop('use_specific', None),
             kwargs.pop('apply_active_classes'),
             kwargs.pop('allow_repeating_parents'),
             kwargs.pop('use_absolute_page_urls'),

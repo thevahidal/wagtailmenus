@@ -19,13 +19,34 @@ UNDERIVABLE_ERROR_MSG = _(
 )
 
 
+class PageChoiceField(PrimaryKeyRelatedField):
+    def __init__(self, section_roots_only=False, *args, **kwargs):
+        queryset = Page.objects.all()
+        if section_roots_only:
+            queryset = queryset.filter(depth__exact=settings.SECTION_ROOT_DEPTH)
+        kwargs['queryset'] = queryset
+        super().__init__(*args, **kwargs)
+
+    def get_attribute(self, instance):
+        return None
+
+
+class SiteChoiceField(PrimaryKeyRelatedField):
+    def __init__(self, *args, **kwargs):
+        kwargs['queryset'] = Site.objects.all()
+        super().__init__(*args, **kwargs)
+
+    def get_attribute(self, instance):
+        return None
+
+
 class RenderViewArgumentSerializer(Serializer):
     apply_active_classes = fields.BooleanField()
     allow_repeating_parents = fields.BooleanField()
     use_absolute_page_urls = fields.BooleanField()
     current_url = fields.URLField(required=False)
-    current_page = PrimaryKeyRelatedField(required=False, queryset=Page.objects.all())
-    site = PrimaryKeyRelatedField(required=False, queryset=Site.objects.all())
+    current_page = PageChoiceField(required=False)
+    site = SiteChoiceField(required=False)
 
     def to_internal_value(self, data):
         """
@@ -130,10 +151,7 @@ class FlatMenuArgumentSerializer(ModelBasedMenuArgumentSerializer):
 
 
 class ChildrenMenuArgumentSerializer(ClassBasedMenuArgumentSerializer):
-    parent_page = PrimaryKeyRelatedField(
-        required=False,
-        queryset=Page.objects.all(),
-    )
+    parent_page = PageChoiceField(required=False)
 
     def to_internal_value(self, data):
         """
@@ -171,10 +189,7 @@ class ChildrenMenuArgumentSerializer(ClassBasedMenuArgumentSerializer):
 
 
 class SectionMenuArgumentSerializer(ClassBasedMenuArgumentSerializer):
-    section_root_page = PrimaryKeyRelatedField(
-        required=False,
-        queryset=Page.objects.filter(depth=settings.SECTION_ROOT_DEPTH),
-    )
+    section_root_page = PageChoiceField(required=False, section_roots_only=True)
 
     def to_internal_value(self, data):
         """

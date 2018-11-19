@@ -6,7 +6,7 @@ from wagtailmenus.conf import settings
 from . import serializers
 
 
-class MenuRenderView(APIView):
+class RenderMenuView(APIView):
     menu_class = None
     # serializers
     argument_serializer_class = None
@@ -21,7 +21,7 @@ class MenuRenderView(APIView):
     def get_menu_class(self):
         if self.menu_class is None:
             raise NotImplementedError(
-                "For subclasses of MenuRenderView, you must set the "
+                "For subclasses of RenderMenuView, you must set the "
                 "'menu_class' attribute or override the "
                 "get_menu_class() class method."
             )
@@ -30,7 +30,7 @@ class MenuRenderView(APIView):
     def get_argument_serializer_class(self):
         if self.argument_serializer_class is None:
             raise NotImplementedError(
-                "For subclasses of MenuRenderView, you must set the "
+                "For subclasses of RenderMenuView, you must set the "
                 "'argument_serializer_class' attribute or override the "
                 "get_argument_serializer_class) class method."
             )
@@ -42,9 +42,10 @@ class MenuRenderView(APIView):
 
         # Mix default argument values into GET where not specified
         data = request.GET.copy()
-        for key, val in self.get_default_argument_values():
+        defaults = self.get_default_argument_values()
+        for key in defaults:
             if key not in data:
-                data[key] = val
+                data[key] = defaults[key]
 
         return cls(data=data, *args, **kwargs)
 
@@ -62,12 +63,12 @@ class MenuRenderView(APIView):
             'allow_repeating_parents': self.allow_repeating_parents_default,
             'use_absolute_page_urls': self.use_absolute_page_urls_default,
         }
-        return {key: val for key, val in defaults if val is not None}
+        return {key: val for key, val in defaults.items() if val is not None}
 
     def get_menu_serializer_class(self):
         if self.menu_serializer_class is None:
             raise NotImplementedError(
-                "For subclasses of MenuRenderView, you must set the "
+                "For subclasses of RenderMenuView, you must set the "
                 "'menu_serializer_class' attribute or override the "
                 "get_menu_serializer_class() class method."
             )
@@ -93,7 +94,7 @@ class MenuRenderView(APIView):
         arg_serializer.is_valid(raise_exception=True)
 
         # Get a menu instance using the valid data
-        menu_instance = self.get_menu_instance(request, arg_serializer.data)
+        menu_instance = self.get_menu_instance(request, arg_serializer.validated_data)
 
         # Create a serializer for this menu instance
         menu_serializer = self.get_menu_serializer(menu_instance, *args, **kwargs)
@@ -131,21 +132,21 @@ class MenuRenderView(APIView):
         return option_values
 
 
-class MainMenuRenderView(MenuRenderView):
+class RenderMainMenuView(RenderMenuView):
     menu_class = settings.models.MAIN_MENU_MODEL
     # serializers
     argument_serializer_class = serializers.MainMenuArgumentSerializer
     menu_serializer_class = serializers.MainMenuSerializer
 
 
-class FlatMenuRenderView(MenuRenderView):
+class RenderFlatMenuView(RenderMenuView):
     menu_class = settings.models.MAIN_MENU_MODEL
     # serializers
     argument_serializer_class = serializers.FlatMenuArgumentSerializer
     menu_serializer_class = serializers.FlatMenuSerializer
 
 
-class ChildrenMenuRenderView(MenuRenderView):
+class RenderChildrenMenuView(RenderMenuView):
     menu_class = settings.objects.CHILDREN_MENU_CLASS
     # serializers
     argument_serializer_class = serializers.ChildrenMenuArgumentSerializer
@@ -161,7 +162,7 @@ class ChildrenMenuRenderView(MenuRenderView):
             option_values['parent_page'] = current_page
 
 
-class SectionMenuRenderView(MenuRenderView):
+class RenderSectionMenuView(RenderMenuView):
     menu_class = settings.objects.SECTION_MENU_CLASS
     # serializers
     argument_serializer_class = serializers.SectionMenuArgumentSerializer

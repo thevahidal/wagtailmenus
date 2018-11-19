@@ -29,5 +29,6 @@ urlpatterns = [
     # tests the effect of `use_specific=3` in template tags
     url(r'^superheroes/dc-comics/wonder-woman/$',
         TemplateView.as_view(template_name='use-specific-always.html')),
+    url(r'api/menus/', include('wagtailmenus.api.v1.urls')),
     url(r'', include(wagtail_urls)),
 ]
