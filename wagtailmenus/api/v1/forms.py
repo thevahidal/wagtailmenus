@@ -148,6 +148,8 @@ class ArgValidatorForm(forms.Form):
                     # This will still be useful for deriving 'ancestor_ids'
                     data['best_match_page'] = best_match
             except Http404:
+                if not accept_best_match:
+                    break  # give up
                 # Remove a path component and try again
                 path_components.pop()
             first_run = False
