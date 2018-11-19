@@ -16,6 +16,7 @@ INSTALLED_APPS = (
 
     'taggit',
     'modelcluster',
+    'rest_framework',
 
     'django.contrib.admin',
     'django.contrib.auth',
