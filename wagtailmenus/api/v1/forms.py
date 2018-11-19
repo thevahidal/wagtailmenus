@@ -7,12 +7,6 @@ from wagtailmenus.conf import constants, settings
 from wagtailmenus.utils.misc import make_dummy_request
 
 
-UNDERIVABLE_ERROR_MSG = _(
-    "This value could not be derived from other values, and "
-    "so must be provided."
-)
-
-
 class UseSpecificChoiceField(forms.TypedChoiceField):
 
     default_error_messages = {
@@ -64,7 +58,6 @@ class ArgValidatorForm(forms.Form):
     site = SiteChoiceField(required=False)
 
     def __init__(self, *args, **kwargs):
-        print(kwargs['initial'])
         self._view = kwargs.pop('view', None)
         self._request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
@@ -100,18 +93,19 @@ class ArgValidatorForm(forms.Form):
         return self._dummy_request
 
     def derive_site(self, data):
+        error_msg = _(
+            "This value was not provided and could not be derived from "
+            "'current_url'."
+        )
         if not data['current_url']:
-            self.add_error('site', _(
-                "This value was not provided and could not be derived from "
-                "'current_url'."
-            ))
+            self.add_error('site', error_msg)
             return
 
         request = self.get_dummy_request()
         try:
             data['site'] = Site.find_for_request(request)
         except Site.DoesNotExist:
-            self.add_error('site', UNDERIVABLE_ERROR_MSG)
+            self.add_error('site', error_msg)
 
     def derive_current_page(self, data, force_derivation=False):
         if not force_derivation and not data.get('apply_active_classes'):
