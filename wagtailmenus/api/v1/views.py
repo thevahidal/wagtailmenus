@@ -153,7 +153,7 @@ class RenderChildrenMenuView(RenderMenuView):
     arg_validator_form_class = forms.ChildrenMenuArgValidatorForm
     menu_serializer_class = serializers.ChildrenMenuSerializer
 
-    # argument default overrides
+    # argument defaults
     max_levels_default = settings.DEFAULT_CHILDREN_MENU_MAX_LEVELS
     use_specific_default = settings.DEFAULT_CHILDREN_MENU_USE_SPECIFIC
     apply_active_classes_default = False
@@ -164,6 +164,6 @@ class RenderSectionMenuView(RenderMenuView):
     arg_validator_form_class = forms.SectionMenuArgValidatorForm
     menu_serializer_class = serializers.SectionMenuSerializer
 
-    # argument default overrides
+    # argument defaults
     max_levels_default = settings.DEFAULT_SECTION_MENU_MAX_LEVELS
     use_specific_default = settings.DEFAULT_SECTION_MENU_USE_SPECIFIC
