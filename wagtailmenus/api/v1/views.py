@@ -102,12 +102,11 @@ class RenderMenuView(APIView):
         method is to bundle up all available data into a format that
         ``Menu._get_render_prepared_object()`` will understand, and call that.
         """
-
         data = dict(form.cleaned_data)
 
-        # Menus are typically rendered from an existing ``RequestContext``
-        # object, which we do not have. However, we can provide a dictionary
-        # with a similar-looking data structure.
+        # `Menu._get_render_prepared_object()`` normally recieves a
+        # ``RequestContext`` object, but will accept a dictionary with a
+        # similar data structure.
         dummy_context = {
             'request': request,
             'current_site': data.pop('site'),
