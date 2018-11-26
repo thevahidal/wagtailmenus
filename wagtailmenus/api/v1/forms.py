@@ -78,7 +78,10 @@ class ArgValidatorForm(forms.Form):
     allow_repeating_parents = forms.BooleanField(required=False)
     use_absolute_page_urls = forms.BooleanField(required=False)
     current_url = forms.URLField(label=_("Current URL"), required=False)
-    current_page = PageChoiceField(required=False)
+    current_page = PageChoiceField(
+        required=False,
+        empty_label=_("Derive from 'current_url'")
+    )
     site = SiteChoiceField(required=False)
 
     def __init__(self, *args, **kwargs):
@@ -249,7 +252,10 @@ class FlatMenuArgValidatorForm(MenuModelArgValidatorForm):
 
 
 class ChildrenMenuArgValidatorForm(MenuClassArgValidatorForm):
-    parent_page = PageChoiceField(required=False)
+    parent_page = PageChoiceField(
+        required=False,
+        empty_label=_("Derive from 'current_page' or 'current_url'")
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -297,7 +303,10 @@ class ChildrenMenuArgValidatorForm(MenuClassArgValidatorForm):
 
 
 class SectionMenuArgValidatorForm(MenuClassArgValidatorForm):
-    section_root_page = PageChoiceField(required=False)
+    section_root_page = PageChoiceField(
+        required=False,
+        empty_label=_("Derive from 'current_page' or 'current_url'")
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
