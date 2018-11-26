@@ -76,11 +76,17 @@ class SiteChoiceField(forms.ModelChoiceField):
 class ArgValidatorForm(forms.Form):
     apply_active_classes = forms.BooleanField(required=False)
     allow_repeating_parents = forms.BooleanField(required=False)
-    use_absolute_page_urls = forms.BooleanField(required=False)
-    current_url = forms.URLField(label=_("Current URL"), required=False)
+    use_absolute_page_urls = forms.BooleanField(
+        label=_('Use absolute page URLs'),
+        required=False,
+    )
+    current_url = forms.URLField(
+        label=_("Current URL"),
+        required=False,
+    )
     current_page = PageChoiceField(
         required=False,
-        empty_label=_("Derive from 'current_url'")
+        empty_label=_("Derive from 'current_url'"),
     )
     site = SiteChoiceField(required=False)
 
@@ -229,11 +235,11 @@ class ArgValidatorForm(forms.Form):
 class MenuModelArgValidatorForm(ArgValidatorForm):
     max_levels = MaxLevelsChoiceField(
         required=False,
-        empty_label=_('Use the default value set on the menu object'),
+        empty_label=_('Use the default value from the matching menu object'),
     )
     use_specific = UseSpecificChoiceField(
         required=False,
-        empty_label=_('Use the default value set on the menu object'),
+        empty_label=_('Use the default value from the matching menu object'),
     )
 
 
