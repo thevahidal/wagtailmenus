@@ -34,7 +34,7 @@ class MaxLevelsChoiceField(forms.TypedChoiceField):
     default_error_messages = {
         'invalid_choice': _(
             '%(value)s is not valid. The value must be one of: '
-        ) + ','.join(str(v) for v in constants.MAX_LEVELS_CHOICES)
+        ) + ','.join(str(v) for v, l in constants.MAX_LEVELS_CHOICES)
     }
 
     def __init__(self, *args, **kwargs):
