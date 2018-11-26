@@ -121,7 +121,7 @@ class RenderMenuView(APIView):
             'current_site': data.pop('site'),
             'wagtailmenus_vals': {
                 'current_page': data.pop('current_page', None),
-                'section_root': data.pop('section_root', None),
+                'section_root': data.pop('section_root_page', None),
                 'current_page_ancestor_ids': data.pop('ancestor_page_ids', ()),
             }
         }
