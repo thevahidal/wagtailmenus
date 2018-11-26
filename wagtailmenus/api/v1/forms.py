@@ -1,6 +1,8 @@
 from django import forms
+from django.conf import settings as django_settings
 from django.http import Http404
 from django.utils.translation import ugettext_lazy as _
+from django.template import loader
 from wagtail.core.models import Page, Site
 
 from wagtailmenus.conf import constants, settings
@@ -16,8 +18,30 @@ class UseSpecificChoiceField(forms.TypedChoiceField):
     }
 
     def __init__(self, *args, **kwargs):
+        empty_label = kwargs.pop('empty_label', '-----')
+        choices = (('', empty_label),) + constants.USE_SPECIFIC_CHOICES
         defaults = {
-            'choices': constants.USE_SPECIFIC_CHOICES,
+            'choices': choices,
+            'coerce': int,
+            'empty_value': None,
+        }
+        kwargs.update({k: v for k, v in defaults.items() if k not in kwargs})
+        super().__init__(*args, **kwargs)
+
+
+class MaxLevelsChoiceField(forms.TypedChoiceField):
+
+    default_error_messages = {
+        'invalid_choice': _(
+            '%(value)s is not valid. The value must be one of: '
+        ) + ','.join(str(v) for v in constants.MAX_LEVELS_CHOICES)
+    }
+
+    def __init__(self, *args, **kwargs):
+        empty_label = kwargs.pop('empty_label', '-----')
+        choices = (('', empty_label),) + constants.MAX_LEVELS_CHOICES
+        defaults = {
+            'choices': choices,
             'coerce': int,
             'empty_value': None,
         }
@@ -53,7 +77,7 @@ class ArgValidatorForm(forms.Form):
     apply_active_classes = forms.BooleanField(required=False)
     allow_repeating_parents = forms.BooleanField(required=False)
     use_absolute_page_urls = forms.BooleanField(required=False)
-    current_url = forms.URLField(required=False)
+    current_url = forms.URLField(label=_("Current URL"), required=False)
     current_page = PageChoiceField(required=False)
     site = SiteChoiceField(required=False)
 
@@ -61,7 +85,7 @@ class ArgValidatorForm(forms.Form):
         self._view = kwargs.pop('view', None)
         self._request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
-        self.fields['current_page'].queryset = Page.objects.all()
+        self.fields['current_page'].queryset = Page.objects.filter(depth__gt=1)
         self.fields['site'].queryset = Site.objects.all()
         self._dummy_request = None
 
@@ -174,12 +198,18 @@ class ArgValidatorForm(forms.Form):
 
 
 class MenuModelArgValidatorForm(ArgValidatorForm):
-    max_levels = forms.IntegerField(required=False, min_value=1, max_value=5)
-    use_specific = UseSpecificChoiceField(required=False)
+    max_levels = MaxLevelsChoiceField(
+        required=False,
+        empty_label=_('Use the default value set on the menu object'),
+    )
+    use_specific = UseSpecificChoiceField(
+        required=False,
+        empty_label=_('Use the default value set on the menu object'),
+    )
 
 
 class MenuClassArgValidatorForm(ArgValidatorForm):
-    max_levels = forms.IntegerField(min_value=1, max_value=5)
+    max_levels = MaxLevelsChoiceField()
     use_specific = UseSpecificChoiceField()
 
 
@@ -197,7 +227,7 @@ class ChildrenMenuArgValidatorForm(MenuClassArgValidatorForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['parent_page'].queryset = Page.objects.all()
+        self.fields['parent_page'].queryset = Page.objects.filter(depth__gt=1)
 
     def clean(self):
         """
