@@ -11,6 +11,7 @@ DATABASES = {
 }
 
 INSTALLED_APPS += (
+    'wagtailmenus.api',
     'wagtailmenus.tests',
 )
 
