@@ -129,7 +129,7 @@ class RenderMenuView(APIView):
 
 class RenderMainMenuView(RenderMenuView):
     """
-    Returns a JSON representation of a 'main menu' matching the supplied parameters.
+    Returns a JSON representation of a 'main menu' (including menu items) matching the supplied parameters.
 
     For optimal performance, supply the ID of the current site using the 'site' parameter, and the ID of the current page using the 'current_page' parameter. If neither of these values are available when making the request, you can provide the full URL (including scheme and hostname) of the current request using the 'current_url' parameter, and the view will attempt to derive both values from that.
     """
@@ -140,7 +140,7 @@ class RenderMainMenuView(RenderMenuView):
 
 class RenderFlatMenuView(RenderMenuView):
     """
-    Returns a JSON representation of a 'flat menu' matching the supplied parameters.
+    Returns a JSON representation of a 'flat menu' (including menu items) matching the supplied parameters.
 
     Use the (required) 'handle' parameter to specify the handle of the flat menu you wish to render.
 
@@ -161,7 +161,7 @@ class RenderFlatMenuView(RenderMenuView):
 
 class RenderChildrenMenuView(RenderMenuView):
     """
-    Returns a JSON representation of a 'children menu' matching the supplied parameters.
+    Returns a JSON representation of a 'children menu' (including menu items) matching the supplied parameters.
 
     Use the 'parent_page' parameter to specify the ID of the page you wish to render a children menu for. If not provided, the view will use the page specified by the 'current_page' parameter as the parent page, or the page derived from 'current_url' (if available).
 
@@ -179,7 +179,7 @@ class RenderChildrenMenuView(RenderMenuView):
 
 class RenderSectionMenuView(RenderMenuView):
     """
-    Returns a JSON representation of a 'section menu' matching the supplied parameters.
+    Returns a JSON representation of a 'section menu' (including menu items) matching the supplied parameters.
 
     For optimal performance, use the 'section_root_page' parameter to specify the ID of the section root page for the current section. If not provided, the view will attempt to derive this value from the page specified by the 'current_page' parameter, or the page derived from 'current_url' (if available).
 
