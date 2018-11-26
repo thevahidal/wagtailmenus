@@ -1,11 +1,14 @@
 from django.utils.translation import ugettext_lazy as _
 from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework.views import APIView
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
+
 
 from wagtailmenus.conf import settings
 
 from . import forms
+from . import renderers
 from . import serializers
 
 
@@ -20,6 +23,8 @@ class RenderMenuView(APIView):
     apply_active_classes_default = True
     allow_repeating_parents_default = True
     use_absolute_page_urls_default = False
+
+    renderer_classes = (renderers.BrowsableAPIRendererWithParamValidatorForm, JSONRenderer)
 
     def get_menu_class(self):
         if self.menu_class is None:
@@ -44,9 +49,12 @@ class RenderMenuView(APIView):
         return self.get_arg_validator_form_class()(**init_kwargs)
 
     def get_arg_validator_form_kwargs(self, request):
+        initial = self.get_arg_validator_form_initial(request)
+        data = initial.copy()
+        data.update(request.GET.items())
         return {
-            'data': request.GET,
-            'initial': self.get_arg_validator_form_initial(request),
+            'data': data,
+            'initial': initial,
             'request': request,
             'view': self,
         }
@@ -84,6 +92,7 @@ class RenderMenuView(APIView):
     def get(self, request, *args, **kwargs):
         # Ensure all necessary argument values are present and valid
         form = self.get_arg_validator_form(request, *args, **kwargs)
+        self._param_validator_form = form
 
         if not form.is_valid():
             raise ValidationError(form.errors)
