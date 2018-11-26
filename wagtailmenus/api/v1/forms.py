@@ -196,6 +196,32 @@ class ArgValidatorForm(forms.Form):
         else:
             data['ancestor_page_ids'] = ()
 
+    @property
+    def template(self):
+        if 'crispy_forms' in django_settings.INSTALLED_APPS:
+            return 'wagtailmenus/api/crispy_form.html'
+        return 'wagtailmenus/api/form.html'
+
+    def to_html(self, request, view):
+        template = loader.get_template(self.template)
+        context = {'form': self}
+        return template.render(context, request)
+
+    @property
+    def helper(self):
+        if 'crispy_forms' in django_settings.INSTALLED_APPS:
+            from crispy_forms.helper import FormHelper
+            from crispy_forms.layout import Layout, Submit
+
+            layout_components = list(self.fields.keys()) + [
+                Submit('', _('Submit'), css_class='btn-default'),
+            ]
+            helper = FormHelper()
+            helper.form_method = 'GET'
+            helper.template_pack = 'bootstrap3'
+            helper.layout = Layout(*layout_components)
+            return helper
+
 
 class MenuModelArgValidatorForm(ArgValidatorForm):
     max_levels = MaxLevelsChoiceField(
