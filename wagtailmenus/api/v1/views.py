@@ -163,7 +163,7 @@ class RenderChildrenMenuView(RenderMenuView):
     """
     Returns a JSON representation of a 'children menu' matching the supplied parameters.
 
-    Use the 'parent_page' parameter to specify the ID of the page you wish to render a children menu for. If not provided, the view will use the page specified by the 'current_page' parameter as the parent page, or the page derived from 'current_url' (if available).   
+    Use the 'parent_page' parameter to specify the ID of the page you wish to render a children menu for. If not provided, the view will use the page specified by the 'current_page' parameter as the parent page, or the page derived from 'current_url' (if available).
 
     For optimal performance, supply the ID of the current site using the 'site' parameter, and the ID of the current page using the 'current_page' parameter. If neither of these values are available when making the request, you can provide the full URL (including scheme and hostname) of the current request using the 'current_url' parameter, and the view will attempt to derive both values from that.
     """
@@ -181,7 +181,7 @@ class RenderSectionMenuView(RenderMenuView):
     """
     Returns a JSON representation of a 'section menu' matching the supplied parameters.
 
-    For optimal performance, supply 'section_root_page' parameter to specify the ID of root page for the current section. If not provided, the view will attempt to derive this value from the page specified by the 'current_page' parameter, or the page derived from 'current_url' (if available).
+    For optimal performance, use the 'section_root_page' parameter to specify the ID of the section root page for the current section. If not provided, the view will attempt to derive this value from the page specified by the 'current_page' parameter, or the page derived from 'current_url' (if available).
 
     For optimal performance, supply the ID of the current site using the 'site' parameter, and the ID of the current page using the 'current_page' parameter. If neither of these values are available when making the request, you can provide the full URL (including scheme and hostname) of the current request using the 'current_url' parameter, and the view will attempt to derive both values from that.
     """
