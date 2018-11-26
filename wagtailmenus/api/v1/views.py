@@ -142,7 +142,7 @@ class RenderFlatMenuView(RenderMenuView):
     fall_back_to_default_site_menus_default = True
 
     def get_arg_validator_form_initial(self, request):
-        initial = super().get_arg_validator_form_initial()
+        initial = super().get_arg_validator_form_initial(request)
         initial['fall_back_to_default_site_menus'] = self.fall_back_to_default_site_menus_default
         return initial
 

@@ -162,10 +162,10 @@ class ArgValidatorForm(forms.Form):
             ))
 
     def derive_ancestor_page_ids(self, data):
-        page = data['current_page'] or data.get('best_match_page')
+        page = data.get('current_page') or data.get('best_match_page')
         if page:
             data['ancestor_page_ids'] = set(
-                page.get_ancestors(inclusive=data['current_page'] is None)
+                page.get_ancestors(inclusive=data.get('current_page') is None)
                 .filter(depth__gte=settings.SECTION_ROOT_DEPTH)
                 .values_list('id', flat=True)
             )
@@ -216,12 +216,12 @@ class ChildrenMenuArgValidatorForm(MenuClassArgValidatorForm):
         If possible, derive a value for 'parent_page' and update the supplied
         ``data`` dictionary to include it.
         """
-        if data['current_page']:
+        if data.get('current_page'):
             data['parent_page'] = data['current_page']
         else:
             self.add_error('parent_page', _(
                 "This value was not provided and could not be derived from "
-                "'current_url' or 'current_page'.")
+                "'current_page' or 'current_url'.")
             )
 
     def derive_current_page(self, data, force_derivation=False, accept_best_match=False):
@@ -235,7 +235,7 @@ class ChildrenMenuArgValidatorForm(MenuClassArgValidatorForm):
         the 'accept_best_match' is False by default.
         """
         force_derivation = force_derivation or (
-            not data['parent_page'] and not data['current_page']
+            not data['parent_page'] and not data.get('current_page')
         )
         super().derive_current_page(data, force_derivation, accept_best_match)
 
@@ -265,12 +265,12 @@ class SectionMenuArgValidatorForm(MenuClassArgValidatorForm):
         If possible, derive a value for 'section_root_page' and update the
         supplied ``data`` dictionary to include it.
         """
-        page = data['current_page'] or data.get('best_match_page')
+        page = data.get('current_page') or data.get('best_match_page')
         section_root_depth = settings.SECTION_ROOT_DEPTH
         if page is None or page.depth < section_root_depth:
             self.add_error('section_root_page', _(
-                "The value was not provided and cannot be derived from "
-                "'current_url' or 'current_page'."
+                "This value was not provided and could not be derived from "
+                "'current_page' or 'current_url'."
             ))
             return
         if page.depth > section_root_depth:
@@ -290,6 +290,6 @@ class SectionMenuArgValidatorForm(MenuClassArgValidatorForm):
         we'll leave 'accept_best_match' as True by default.
         """
         force_derivation = force_derivation or (
-            not data['section_root_page'] and not data['current_page']
+            not data['section_root_page'] and not data.get('current_page')
         )
         super().derive_current_page(data, force_derivation, accept_best_match)
