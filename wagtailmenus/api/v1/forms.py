@@ -5,94 +5,109 @@ from django.utils.translation import ugettext_lazy as _
 from django.template import loader
 from wagtail.core.models import Page, Site
 
-from wagtailmenus.conf import constants, settings
+from wagtailmenus.conf import settings
 from wagtailmenus.utils.misc import make_dummy_request
+from . import form_fields as fields
 
 
-class UseSpecificChoiceField(forms.TypedChoiceField):
-
-    default_error_messages = {
-        'invalid_choice': _(
-            '%(value)s is not valid. The value must be one of: '
-        ) + ','.join(str(v) for v in constants.USE_SPECIFIC_VALUES)
-    }
-
-    def __init__(self, *args, **kwargs):
-        empty_label = kwargs.pop('empty_label', '-----')
-        choices = (('', empty_label),) + constants.USE_SPECIFIC_CHOICES
-        defaults = {
-            'choices': choices,
-            'coerce': int,
-            'empty_value': None,
-        }
-        kwargs.update({k: v for k, v in defaults.items() if k not in kwargs})
-        super().__init__(*args, **kwargs)
-
-
-class MaxLevelsChoiceField(forms.TypedChoiceField):
-
-    default_error_messages = {
-        'invalid_choice': _(
-            '%(value)s is not valid. The value must be one of: '
-        ) + ','.join(str(v) for v, l in constants.MAX_LEVELS_CHOICES)
-    }
-
-    def __init__(self, *args, **kwargs):
-        empty_label = kwargs.pop('empty_label', '-----')
-        choices = (('', empty_label),) + constants.MAX_LEVELS_CHOICES
-        defaults = {
-            'choices': choices,
-            'coerce': int,
-            'empty_value': None,
-        }
-        kwargs.update({k: v for k, v in defaults.items() if k not in kwargs})
-        super().__init__(*args, **kwargs)
-
-
-class PageChoiceField(forms.ModelChoiceField):
-
-    default_error_messages = {
-        'invalid_choice': _('%(value)s is not a valid page ID')
-    }
-
-    def __init__(self, *args, **kwargs):
-        if 'queryset' not in 'kwargs':
-            kwargs['queryset'] = Page.objects.none()
-        super().__init__(*args, **kwargs)
-
-
-class SiteChoiceField(forms.ModelChoiceField):
-
-    default_error_messages = {
-        'invalid_choice': _('%(value)s is not a valid site ID')
-    }
-
-    def __init__(self, *args, **kwargs):
-        if 'queryset' not in 'kwargs':
-            kwargs['queryset'] = Site.objects.none()
-        super().__init__(*args, **kwargs)
-
-
-class ArgValidatorForm(forms.Form):
-    apply_active_classes = forms.BooleanField(required=False)
-    allow_repeating_parents = forms.BooleanField(required=False)
-    use_absolute_page_urls = forms.BooleanField(
-        label=_('Use absolute page URLs'),
-        required=False,
-    )
-    current_url = forms.URLField(
-        label=_("Current URL"),
-        required=False,
-    )
-    current_page = PageChoiceField(
-        required=False,
-        empty_label=_("Derive from 'current_url'"),
-    )
-    site = SiteChoiceField(required=False)
-
+class BaseAPIViewArgumentForm(forms.Form):
+    """
+    A form class that looks for 'view' and 'request' arguments at initialisation,
+    and is capable of rendering itself to a template (in a similar fashion to
+    ``django_filters.rest_framework.DjangoFilterBackend``). Schema support
+    may also have to be added in future.
+    """
     def __init__(self, *args, **kwargs):
         self._view = kwargs.pop('view', None)
         self._request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+
+    @property
+    def template(self):
+        if 'crispy_forms' in django_settings.INSTALLED_APPS:
+            return 'wagtailmenus/api/forms/crispy_form.html'
+        return 'wagtailmenus/api/forms/form.html'
+
+    def to_html(self, request, view):
+        template = loader.get_template(self.template)
+        context = {'form': self}
+        return template.render(context, request)
+
+    @property
+    def helper(self):
+        try:
+            from crispy_forms.helper import FormHelper
+            from crispy_forms.layout import Layout, Submit
+        except ImportError:
+            return
+
+        layout_components = list(self.fields.keys()) + [
+            Submit('', _('Submit'), css_class='btn-default'),
+        ]
+        obj = FormHelper()
+        obj.form_method = 'GET'
+        obj.template_pack = 'bootstrap3'
+        obj.layout = Layout(*layout_components)
+        return obj
+
+
+class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
+    current_url = forms.URLField(
+        label=_("Current URL"),
+        help_text=_(
+            "The full URL of the page you are generating a menu for. "
+            "Used for deriving 'site' and 'current_page' values in cases "
+            "where those values are unavailable or not applicable. For "
+            "example, if the URL does not map to a Page object exactly."
+        ),
+    )
+    site = fields.SiteChoiceField(
+        required=False,
+        help_text=_(
+            "The site you are generating a menu for. Affects how URLs for "
+            "page links are calculated (using relative or absolute URLs). If "
+            "not supplied, the view will attempt to derive this value from "
+            "'current_url' or the API request. However, for optimal "
+            "performance, it's recommended that you supply it where possible."
+        ),
+    )
+    current_page = fields.PageChoiceField(
+        required=False,
+        help_text=_(
+            "The page you are generating a menu for. Affects which "
+            "'active classes' are applied to menu items when using the "
+            "'apply_active_classes' option, and can also be used to derive "
+            "other values from (e.g. 'parent_page' and 'section_root_page'). "
+            "If not supplied, the view will attempt to derive this value "
+            "from 'current_url'."
+        ),
+    )
+    apply_active_classes = forms.BooleanField(
+        required=False,
+        help_text=_(
+            "Add 'active' and 'ancestor' classes to menu items to help "
+            "indicate a user's current position within the menu structure."
+        ),
+    )
+    allow_repeating_parents = forms.BooleanField(
+        required=False,
+        help_text=_(
+            "Permit pages inheriting from MenuPage or MenuPageMixin "
+            "to add duplicates of themselves to their 'children' when "
+            "appearing as a menu item."
+        )
+    )
+    use_absolute_page_urls = forms.BooleanField(
+        label=_('Use absolute page URLs'),
+        required=False,
+        help_text=_(
+            "When calculating URLs for menu items that link to pages, use the "
+            "full URL where possible. For example: "
+            "'https://www.site.com/page-url'."
+        )
+    )
+
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['current_page'].queryset = Page.objects.filter(depth__gt=1)
         self.fields['site'].queryset = Site.objects.all()
@@ -119,26 +134,22 @@ class ArgValidatorForm(forms.Form):
     def get_dummy_request(self):
         if self._dummy_request:
             return self._dummy_request
-        url = self.cleaned_data['current_url']
+        url = self.cleaned_data.get('current_url')
         if not url:
             return None
         self._dummy_request = make_dummy_request(url=url, original_request=self._request)
         return self._dummy_request
 
     def derive_site(self, data):
-        error_msg = _(
-            "This value was not provided and could not be derived from "
-            "'current_url'."
-        )
-        if not data['current_url']:
-            self.add_error('site', error_msg)
-            return
-
-        request = self.get_dummy_request()
-        try:
-            data['site'] = Site.find_for_request(request)
-        except Site.DoesNotExist:
-            self.add_error('site', error_msg)
+        if data.get('current_url'):
+            request = self.get_dummy_request()
+            try:
+                data['site'] = Site.find_for_request(request)
+            except Site.DoesNotExist:
+                self.add_error('site', _(
+                    "This value was not provided and could not be derived "
+                    "from 'current_url'."
+                ))
 
     def derive_current_page(self, data, force_derivation=False, accept_best_match=True):
         if not force_derivation and not data.get('apply_active_classes'):
@@ -150,7 +161,7 @@ class ArgValidatorForm(forms.Form):
         # raising errors is only necessary if derivation if is crucial (e.g.
         # for deriving other values from) - in which case 'force_derivation'
         # will be True
-        if not data['current_url']:
+        if not data.get('current_url'):
             if force_derivation:
                 self.add_error('current_page', _(
                     "This value was not provided and could not be derived from "
@@ -205,62 +216,93 @@ class ArgValidatorForm(forms.Form):
         else:
             data['ancestor_page_ids'] = ()
 
-    @property
-    def template(self):
-        if 'crispy_forms' in django_settings.INSTALLED_APPS:
-            return 'wagtailmenus/api/crispy_form.html'
-        return 'wagtailmenus/api/form.html'
 
-    def to_html(self, request, view):
-        template = loader.get_template(self.template)
-        context = {'form': self}
-        return template.render(context, request)
-
-    @property
-    def helper(self):
-        if 'crispy_forms' in django_settings.INSTALLED_APPS:
-            from crispy_forms.helper import FormHelper
-            from crispy_forms.layout import Layout, Submit
-
-            layout_components = list(self.fields.keys()) + [
-                Submit('', _('Submit'), css_class='btn-default'),
-            ]
-            helper = FormHelper()
-            helper.form_method = 'GET'
-            helper.template_pack = 'bootstrap3'
-            helper.layout = Layout(*layout_components)
-            return helper
-
-
-class MenuModelArgValidatorForm(ArgValidatorForm):
-    max_levels = MaxLevelsChoiceField(
+class BaseMenuModelGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
+    max_levels = fields.MaxLevelsChoiceField(
         required=False,
-        empty_label=_('Use the default value from the matching menu object'),
+        empty_label=_('Default: Use the value set for the menu object'),
     )
-    use_specific = UseSpecificChoiceField(
+    use_specific = fields.UseSpecificChoiceField(
         required=False,
-        empty_label=_('Use the default value from the matching menu object'),
+        empty_label=_('Default: Use the value set for the menu object'),
     )
 
 
-class MenuClassArgValidatorForm(ArgValidatorForm):
-    max_levels = MaxLevelsChoiceField()
-    use_specific = UseSpecificChoiceField()
-
-
-class MainMenuArgValidatorForm(MenuModelArgValidatorForm):
-    pass
-
-
-class FlatMenuArgValidatorForm(MenuModelArgValidatorForm):
-    handle = forms.SlugField()
-    fall_back_to_default_site_menus = forms.BooleanField(required=False)
-
-
-class ChildrenMenuArgValidatorForm(MenuClassArgValidatorForm):
-    parent_page = PageChoiceField(
+class MainMenuGeneratorArgumentForm(BaseMenuModelGeneratorArgumentForm):
+    site = fields.SiteChoiceField(
         required=False,
-        empty_label=_("Derive from 'current_page' or 'current_url'")
+        help_text=_(
+            "The site you are generating a menu for. Used to retrieve "
+            "the relevant menu object from the database. If not supplied, the "
+            "view will attempt to derive this value from 'current_url'. "
+            "However, for optimal performance, it's recommended that you "
+            "supply it where possible."
+        ),
+    )
+
+    field_order = (
+        'current_url',
+        'site',
+        'current_page',
+        'max_levels',
+        'use_specific',
+        'apply_active_classes',
+        'allow_repeating_parents',
+        'use_absolute_page_urls',
+    )
+
+
+class FlatMenuGeneratorArgumentForm(BaseMenuModelGeneratorArgumentForm):
+    handle = forms.SlugField(
+        help_text=_(
+            "The 'handle' for the flat menu you wish to generate. For "
+            "example: 'info' or 'contact'."
+        )
+    )
+    fall_back_to_default_site_menus = forms.BooleanField(
+        required=False,
+        help_text=_(
+            "If a menu cannot be found matching the provided 'handle' for the "
+            "supplied (or derived) site, use the flat menu defined for the "
+            "'default' site (if available)."
+        )
+    )
+
+    field_order = (
+        'handle',
+        'current_url',
+        'site',
+        'fall_back_to_default_site_menus',
+        'current_page',
+        'max_levels',
+        'use_specific',
+        'apply_active_classes',
+        'allow_repeating_parents',
+        'use_absolute_page_urls',
+    )
+
+
+class ChildrenMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
+    parent_page = fields.PageChoiceField(
+        required=False,
+        help_text=_(
+            "If not supplied, the view will attempt to derive this value from "
+            "'current_page' or 'current_url'."
+        )
+    )
+    max_levels = fields.MaxLevelsChoiceField()
+    use_specific = fields.UseSpecificChoiceField()
+
+    field_order = (
+        'parent_page',
+        'current_url',
+        'site',
+        'current_page',
+        'max_levels',
+        'use_specific',
+        'apply_active_classes',
+        'allow_repeating_parents',
+        'use_absolute_page_urls',
     )
 
     def __init__(self, *args, **kwargs):
@@ -289,8 +331,8 @@ class ChildrenMenuArgValidatorForm(MenuClassArgValidatorForm):
         else:
             self.add_error('parent_page', _(
                 "This value was not provided and could not be derived from "
-                "'current_page' or 'current_url'.")
-            )
+                "'current_page' or 'current_url'."
+            ))
 
     def derive_current_page(self, data, force_derivation=False, accept_best_match=False):
         """
@@ -308,10 +350,27 @@ class ChildrenMenuArgValidatorForm(MenuClassArgValidatorForm):
         super().derive_current_page(data, force_derivation, accept_best_match)
 
 
-class SectionMenuArgValidatorForm(MenuClassArgValidatorForm):
-    section_root_page = PageChoiceField(
+class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
+    section_root_page = fields.PageChoiceField(
         required=False,
-        empty_label=_("Derive from 'current_page' or 'current_url'")
+        help_text=_(
+            "If not supplied, the view will attempt to derive this value from "
+            "'current_page' or 'current_url'."
+        )
+    )
+    max_levels = fields.MaxLevelsChoiceField()
+    use_specific = fields.UseSpecificChoiceField()
+
+    field_order = (
+        'section_root_page',
+        'current_url',
+        'site',
+        'current_page',
+        'max_levels',
+        'use_specific',
+        'apply_active_classes',
+        'allow_repeating_parents',
+        'use_absolute_page_urls',
     )
 
     def __init__(self, *args, **kwargs):

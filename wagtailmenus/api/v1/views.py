@@ -12,9 +12,9 @@ from . import renderers
 from . import serializers
 
 
-class RenderMenuView(APIView):
+class MenuGeneratorView(APIView):
     menu_class = None
-    arg_validator_form_class = None
+    argument_form_class = None
     menu_serializer_class = None
 
     # argument default values
@@ -24,42 +24,44 @@ class RenderMenuView(APIView):
     allow_repeating_parents_default = True
     use_absolute_page_urls_default = False
 
-    renderer_classes = (renderers.BrowsableAPIRendererWithParamValidatorForm, JSONRenderer)
+    renderer_classes = (
+        renderers.BrowsableAPIWithArgumentFormRenderer,
+        JSONRenderer
+    )
 
     def get_menu_class(self):
         if self.menu_class is None:
             raise NotImplementedError(
-                "For subclasses of RenderMenuView, you must set the "
+                "For subclasses of MenuGeneratorView, you must set the "
                 "'menu_class' attribute or override the "
                 "get_menu_class() class method."
             )
         return self.menu_class
 
-    def get_arg_validator_form_class(self):
-        if self.arg_validator_form_class is None:
+    def get_argument_form_class(self):
+        if self.argument_form_class is None:
             raise NotImplementedError(
-                "For subclasses of RenderMenuView, you must set the "
-                "'arg_validator_form_class' attribute or override the "
-                "get_arg_validator_form_class) class method."
+                "For subclasses of MenuGeneratorView, you must set the "
+                "'argument_form_class' attribute or override the "
+                "get_argument_form_class) class method."
             )
-        return self.arg_validator_form_class
+        return self.argument_form_class
 
-    def get_arg_validator_form(self, request, *args, **kwargs):
-        init_kwargs = self.get_arg_validator_form_kwargs(request)
-        return self.get_arg_validator_form_class()(**init_kwargs)
+    def get_argument_form(self, request, *args, **kwargs):
+        init_kwargs = self.get_argument_form_kwargs(request)
+        return self.get_argument_form_class()(**init_kwargs)
 
-    def get_arg_validator_form_kwargs(self, request):
-        initial = self.get_arg_validator_form_initial(request)
-        data = initial.copy()
+    def get_argument_form_kwargs(self, request):
+        defaults = self.get_argument_form_defaults(request)
+        data = defaults.copy()
         data.update(request.GET.items())
         return {
             'data': data,
-            'initial': initial,
             'request': request,
             'view': self,
         }
 
-    def get_arg_validator_form_initial(self, request):
+    def get_argument_form_defaults(self, request):
         return {
             'max_levels': self.max_levels_default,
             'use_specific': self.use_specific_default,
@@ -71,7 +73,7 @@ class RenderMenuView(APIView):
     def get_menu_serializer_class(self):
         if self.menu_serializer_class is None:
             raise NotImplementedError(
-                "For subclasses of RenderMenuView, you must set the "
+                "For subclasses of MenuGeneratorView, you must set the "
                 "'menu_serializer_class' attribute or override the "
                 "get_menu_serializer_class() class method."
             )
@@ -91,8 +93,8 @@ class RenderMenuView(APIView):
 
     def get(self, request, *args, **kwargs):
         # Ensure all necessary argument values are present and valid
-        form = self.get_arg_validator_form(request, *args, **kwargs)
-        self._param_validator_form = form
+        form = self.get_argument_form(request, *args, **kwargs)
+        self.argument_form = form
 
         if not form.is_valid():
             raise ValidationError(form.errors)
@@ -102,6 +104,7 @@ class RenderMenuView(APIView):
 
         # Create a serializer for this menu instance
         menu_serializer = self.get_menu_serializer(menu_instance, *args, **kwargs)
+
         return Response(menu_serializer.data)
 
     def get_menu_instance(self, request, form):
@@ -136,18 +139,18 @@ class RenderMenuView(APIView):
         return menu_instance
 
 
-class RenderMainMenuView(RenderMenuView):
+class MainMenuGeneratorView(MenuGeneratorView):
     """
     Returns a JSON representation of a 'main menu' (including menu items) matching the supplied parameters.
 
     For optimal performance, supply the ID of the current site using the 'site' parameter, and the ID of the current page using the 'current_page' parameter. If neither of these values are available when making the request, you can provide the full URL (including scheme and hostname) of the current request using the 'current_url' parameter, and the view will attempt to derive both values from that.
     """
     menu_class = settings.models.MAIN_MENU_MODEL
-    arg_validator_form_class = forms.MainMenuArgValidatorForm
+    argument_form_class = forms.MainMenuGeneratorArgumentForm
     menu_serializer_class = serializers.MainMenuSerializer
 
 
-class RenderFlatMenuView(RenderMenuView):
+class FlatMenuGeneratorView(MenuGeneratorView):
     """
     Returns a JSON representation of a 'flat menu' (including menu items) matching the supplied parameters.
 
@@ -156,19 +159,19 @@ class RenderFlatMenuView(RenderMenuView):
     For optimal performance, supply the ID of the current site using the 'site' parameter, and the ID of the current page using the 'current_page' parameter. If neither of these values are available when making the request, you can provide the full URL (including scheme and hostname) of the current request using the 'current_url' parameter, and the view will attempt to derive both values from that.
     """
     menu_class = settings.models.MAIN_MENU_MODEL
-    arg_validator_form_class = forms.FlatMenuArgValidatorForm
+    argument_form_class = forms.FlatMenuGeneratorArgumentForm
     menu_serializer_class = serializers.FlatMenuSerializer
 
     # argument defaults
     fall_back_to_default_site_menus_default = True
 
-    def get_arg_validator_form_initial(self, request):
-        initial = super().get_arg_validator_form_initial(request)
+    def get_argument_form_defaults(self, request):
+        initial = super().get_argument_form_defaults(request)
         initial['fall_back_to_default_site_menus'] = self.fall_back_to_default_site_menus_default
         return initial
 
 
-class RenderChildrenMenuView(RenderMenuView):
+class ChildrenMenuGeneratorView(MenuGeneratorView):
     """
     Returns a JSON representation of a 'children menu' (including menu items) matching the supplied parameters.
 
@@ -177,7 +180,7 @@ class RenderChildrenMenuView(RenderMenuView):
     For optimal performance, supply the ID of the current site using the 'site' parameter, and the ID of the current page using the 'current_page' parameter. If neither of these values are available when making the request, you can provide the full URL (including scheme and hostname) of the current request using the 'current_url' parameter, and the view will attempt to derive both values from that.
     """
     menu_class = settings.objects.CHILDREN_MENU_CLASS
-    arg_validator_form_class = forms.ChildrenMenuArgValidatorForm
+    argument_form_class = forms.ChildrenMenuGeneratorArgumentForm
     menu_serializer_class = serializers.ChildrenMenuSerializer
 
     # argument defaults
@@ -186,7 +189,7 @@ class RenderChildrenMenuView(RenderMenuView):
     apply_active_classes_default = False
 
 
-class RenderSectionMenuView(RenderMenuView):
+class SectionMenuGeneratorView(MenuGeneratorView):
     """
     Returns a JSON representation of a 'section menu' (including menu items) matching the supplied parameters.
 
@@ -195,7 +198,7 @@ class RenderSectionMenuView(RenderMenuView):
     For optimal performance, supply the ID of the current site using the 'site' parameter, and the ID of the current page using the 'current_page' parameter. If neither of these values are available when making the request, you can provide the full URL (including scheme and hostname) of the current request using the 'current_url' parameter, and the view will attempt to derive both values from that.
     """
     menu_class = settings.objects.SECTION_MENU_CLASS
-    arg_validator_form_class = forms.SectionMenuArgValidatorForm
+    argument_form_class = forms.SectionMenuGeneratorArgumentForm
     menu_serializer_class = serializers.SectionMenuSerializer
 
     # argument defaults
