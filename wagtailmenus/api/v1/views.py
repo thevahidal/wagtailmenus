@@ -141,9 +141,7 @@ class MenuGeneratorView(APIView):
 
 class MainMenuGeneratorView(MenuGeneratorView):
     """
-    Returns a JSON representation of a 'main menu' (including menu items) matching the supplied parameters.
-
-    For optimal performance, supply the ID of the current site using the 'site' parameter, and the ID of the current page using the 'current_page' parameter. If neither of these values are available when making the request, you can provide the full URL (including scheme and hostname) of the current request using the 'current_url' parameter, and the view will attempt to derive both values from that.
+    Returns a JSON representation of a 'main menu' (including menu items) matching the supplied arguments.
     """
     menu_class = settings.models.MAIN_MENU_MODEL
     argument_form_class = forms.MainMenuGeneratorArgumentForm
@@ -152,11 +150,7 @@ class MainMenuGeneratorView(MenuGeneratorView):
 
 class FlatMenuGeneratorView(MenuGeneratorView):
     """
-    Returns a JSON representation of a 'flat menu' (including menu items) matching the supplied parameters.
-
-    Use the (required) 'handle' parameter to specify the handle of the flat menu you wish to render.
-
-    For optimal performance, supply the ID of the current site using the 'site' parameter, and the ID of the current page using the 'current_page' parameter. If neither of these values are available when making the request, you can provide the full URL (including scheme and hostname) of the current request using the 'current_url' parameter, and the view will attempt to derive both values from that.
+    Returns a JSON representation of a 'flat menu' (including menu items) matching the supplied arguments.
     """
     menu_class = settings.models.MAIN_MENU_MODEL
     argument_form_class = forms.FlatMenuGeneratorArgumentForm
@@ -173,11 +167,7 @@ class FlatMenuGeneratorView(MenuGeneratorView):
 
 class ChildrenMenuGeneratorView(MenuGeneratorView):
     """
-    Returns a JSON representation of a 'children menu' (including menu items) matching the supplied parameters.
-
-    Use the 'parent_page' parameter to specify the ID of the page you wish to render a children menu for. If not provided, the view will use the page specified by the 'current_page' parameter as the parent page, or the page derived from 'current_url' (if available).
-
-    For optimal performance, supply the ID of the current site using the 'site' parameter, and the ID of the current page using the 'current_page' parameter. If neither of these values are available when making the request, you can provide the full URL (including scheme and hostname) of the current request using the 'current_url' parameter, and the view will attempt to derive both values from that.
+    Returns a JSON representation of a 'children menu' (including menu items) matching the supplied arguments.
     """
     menu_class = settings.objects.CHILDREN_MENU_CLASS
     argument_form_class = forms.ChildrenMenuGeneratorArgumentForm
@@ -191,11 +181,7 @@ class ChildrenMenuGeneratorView(MenuGeneratorView):
 
 class SectionMenuGeneratorView(MenuGeneratorView):
     """
-    Returns a JSON representation of a 'section menu' (including menu items) matching the supplied parameters.
-
-    For optimal performance, use the 'section_root_page' parameter to specify the ID of the section root page for the current section. If not provided, the view will attempt to derive this value from the page specified by the 'current_page' parameter, or the page derived from 'current_url' (if available).
-
-    For optimal performance, supply the ID of the current site using the 'site' parameter, and the ID of the current page using the 'current_page' parameter. If neither of these values are available when making the request, you can provide the full URL (including scheme and hostname) of the current request using the 'current_url' parameter, and the view will attempt to derive both values from that.
+    Returns a JSON representation of a 'section menu' (including menu items) matching the supplied arguments.
     """
     menu_class = settings.objects.SECTION_MENU_CLASS
     argument_form_class = forms.SectionMenuGeneratorArgumentForm
