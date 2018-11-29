@@ -352,10 +352,10 @@ class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
     section_root_page = fields.PageChoiceField(
         required=False,
         help_text=_(
-            "Typically, this is ancestor of currently active page that lives "
-            "directly below home page in the page tree (for example: Home > "
-            "About Us). If not supplied, the view will attempt to derive this "
-            "value from 'current_page' or 'current_url'."
+            "The root page for the current 'section', whose children and "
+            "other decendents you want show menu items for. If not supplied, "
+            "the view will attempt to derive this value from 'current_page' "
+            "or 'current_url'."
         )
     )
     max_levels = fields.MaxLevelsChoiceField()
