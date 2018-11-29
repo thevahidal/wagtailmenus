@@ -55,7 +55,7 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
     current_url = forms.URLField(
         label=_("Current URL"),
         help_text=_(
-            "The full URL of the page you are generating a menu for. "
+            "The full URL of the page you are generating the menu for. "
             "Used for deriving 'site' and 'current_page' values in cases "
             "where those values are unavailable or not applicable. For "
             "example, if the URL does not map to a Page object exactly."
@@ -64,22 +64,20 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
     site = fields.SiteChoiceField(
         required=False,
         help_text=_(
-            "The site you are generating a menu for. Affects how URLs for "
-            "page links are calculated (using relative or absolute URLs). If "
-            "not supplied, the view will attempt to derive this value from "
-            "'current_url' or the API request. However, for optimal "
-            "performance, it's recommended that you supply it where possible."
+            "The site you are generating the menu for. Affects how URLs for "
+            "page links are calculated (using relative or absolute URLs). "
+            "Supply where possible for optimal performance. If not supplied, "
+            "the view will attempt to derive this value from 'current_url'."
         ),
     )
     current_page = fields.PageChoiceField(
         required=False,
         help_text=_(
-            "The page you are generating a menu for. Affects which "
-            "'active classes' are applied to menu items when using the "
-            "'apply_active_classes' option, and can also be used to derive "
-            "other values from (e.g. 'parent_page' and 'section_root_page'). "
-            "If not supplied, the view will attempt to derive this value "
-            "from 'current_url'."
+            "The page you are generating the menu for. Used to determine "
+            "which 'active classes' are applied to menu items when using the "
+            "'apply_active_classes' option, and for deriving other values "
+            "from in some cases. If not supplied, the view will attempt to "
+            "derive this value from 'current_url'."
         ),
     )
     apply_active_classes = forms.BooleanField(
@@ -94,7 +92,7 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
         help_text=_(
             "Permit pages inheriting from MenuPage or MenuPageMixin "
             "to add duplicates of themselves to their 'children' when "
-            "appearing as a menu item."
+            "appearing as menu items."
         )
     )
     use_absolute_page_urls = forms.BooleanField(
@@ -269,8 +267,8 @@ class FlatMenuGeneratorArgumentForm(BaseMenuModelGeneratorArgumentForm):
     )
 
     field_order = (
-        'handle',
         'current_url',
+        'handle',
         'site',
         'fall_back_to_default_site_menus',
         'current_page',
@@ -286,16 +284,16 @@ class ChildrenMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
     parent_page = fields.PageChoiceField(
         required=False,
         help_text=_(
-            "If not supplied, the view will attempt to derive this value from "
-            "'current_page' or 'current_url'."
+            "The page you wish to show children page links for (if different "
+            "to 'current_page')."
         )
     )
     max_levels = fields.MaxLevelsChoiceField()
     use_specific = fields.UseSpecificChoiceField()
 
     field_order = (
-        'parent_page',
         'current_url',
+        'parent_page',
         'site',
         'current_page',
         'max_levels',
@@ -354,16 +352,18 @@ class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
     section_root_page = fields.PageChoiceField(
         required=False,
         help_text=_(
-            "If not supplied, the view will attempt to derive this value from "
-            "'current_page' or 'current_url'."
+            "Typically, this is ancestor of currently active page that lives "
+            "directly below home page in the page tree (for example: Home > "
+            "About Us). If not supplied, the view will attempt to derive this "
+            "value from 'current_page' or 'current_url'."
         )
     )
     max_levels = fields.MaxLevelsChoiceField()
     use_specific = fields.UseSpecificChoiceField()
 
     field_order = (
-        'section_root_page',
         'current_url',
+        'section_root_page',
         'site',
         'current_page',
         'max_levels',
