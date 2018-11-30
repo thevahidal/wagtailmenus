@@ -916,21 +916,25 @@ class SectionMenu(DefinesSubMenuTemplatesMixin, MenuFromPage):
             href = root_page.relative_url(contextual_vals.current_site)
         root_page.href = href
 
-        if option_vals.apply_active_classes:
-            active_class = settings.ACTIVE_ANCESTOR_CLASS
-            current_page = contextual_vals.current_page
-            if(current_page and root_page.id == current_page.id):
+        active_class = ''
+        current_page = contextual_vals.current_page
+        if option_vals.apply_active_classes and current_page:
+            if root_page.id == current_page.id:
                 # `root_page` is the current page, so should probably
                 # have the 'active' class. But, not if there's going to be a
                 # 'repeated item' in the menu items (in which case, the
                 # repeated item should get the active class)
-                if not (
+                if (
                     option_vals.allow_repeating_parents and
                     option_vals.use_specific and
                     getattr(root_page, 'repeat_in_subnav', False)
                 ):
+                    active_class = settings.ACTIVE_ANCESTOR_CLASS
+                else:
                     active_class = settings.ACTIVE_CLASS
-            root_page.active_class = active_class
+            elif current_page.path.startswith(root_page.path):
+                active_class = settings.ACTIVE_ANCESTOR_CLASS
+        root_page.active_class = active_class
         self.root_page = root_page
 
     def get_parent_page_for_menu_items(self):
