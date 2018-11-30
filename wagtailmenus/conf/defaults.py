@@ -92,15 +92,6 @@ PAGE_FIELD_FOR_MENU_ITEM_TEXT = 'title'
 SECTION_ROOT_DEPTH = 3
 
 
-# -----------------
-# REST API settings
-# -----------------
-
-API_PAGE_SERIALIZER_FIELDS = ('id', 'title', 'slug')
-API_FLAT_MENU_ITEM_SERIALIZER_CLASS = 'wagtailmenus.api.v1.serializers.DefaultFlatMenuItemSerializer'
-API_MAIN_MENU_ITEM_SERIALIZER_CLASS = 'wagtailmenus.api.v1.serializers.DefaultMainMenuItemSerializer'
-
-
 # ----------
 # Deprecated
 # ----------
