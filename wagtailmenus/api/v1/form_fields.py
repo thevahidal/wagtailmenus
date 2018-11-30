@@ -5,6 +5,38 @@ from wagtail.core.models import Page, Site
 from wagtailmenus.conf import constants
 
 
+class JavascriptStyleBooleanSelect(forms.Select):
+    def __init__(self, attrs=None):
+        choices = (
+            ('true', _('Yes')),
+            ('false', _('No')),
+        )
+        super().__init__(attrs, choices)
+
+    def format_value(self, value):
+        return {
+            True: 'true',
+            False: 'false',
+            'true': 'true',
+            'false': 'false',
+        }[value]
+
+    def value_from_datadict(self, data, files, name):
+        value = data.get(name)
+        return {
+            True: True,
+            'True': True,
+            'False': False,
+            False: False,
+            'true': True,
+            'false': False,
+        }.get(value)
+
+
+class BooleanChoiceField(forms.BooleanField):
+    widget = JavascriptStyleBooleanSelect
+
+
 class UseSpecificChoiceField(forms.TypedChoiceField):
 
     default_error_messages = {

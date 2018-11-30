@@ -80,14 +80,14 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
             "derive this value from 'current_url'."
         ),
     )
-    apply_active_classes = forms.BooleanField(
+    apply_active_classes = fields.BooleanChoiceField(
         required=False,
         help_text=_(
             "Add 'active' and 'ancestor' classes to menu items to help "
             "indicate a user's current position within the menu structure."
         ),
     )
-    allow_repeating_parents = forms.BooleanField(
+    allow_repeating_parents = fields.BooleanChoiceField(
         required=False,
         help_text=_(
             "Permit pages inheriting from MenuPage or MenuPageMixin "
@@ -95,7 +95,7 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
             "appearing as menu items."
         )
     )
-    use_absolute_page_urls = forms.BooleanField(
+    use_absolute_page_urls = fields.BooleanChoiceField(
         label=_('Use absolute page URLs'),
         required=False,
         help_text=_(
@@ -257,7 +257,7 @@ class FlatMenuGeneratorArgumentForm(BaseMenuModelGeneratorArgumentForm):
             "example: 'info' or 'contact'."
         )
     )
-    fall_back_to_default_site_menus = forms.BooleanField(
+    fall_back_to_default_site_menus = fields.BooleanChoiceField(
         required=False,
         help_text=_(
             "If a menu cannot be found matching the provided 'handle' for the "
