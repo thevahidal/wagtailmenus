@@ -22,6 +22,7 @@ testing_extras = [
     'coverage>=4.5',
     'django-webtest>=1.9,<1.10',
     'wagtail-condensedinlinepanel>=0.5,<0.6',
+    'rest_framework_recursive==0.1.2',
 ]
 
 documentation_extras = [
