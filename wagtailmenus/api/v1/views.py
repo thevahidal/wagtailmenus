@@ -1,12 +1,12 @@
+from collections import OrderedDict
+
 from django.utils.translation import ugettext_lazy as _
 from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework.views import APIView
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 
-
 from wagtailmenus.conf import settings
-
 from . import forms
 from . import renderers
 from . import serializers
@@ -92,6 +92,11 @@ class MenuGeneratorView(APIView):
         }
 
     def get(self, request, *args, **kwargs):
+        # seen_types is a mapping of type name strings (format: "app_label.ModelName")
+        # to model classes. When an page object is serialised in the API, its model
+        # is added to this mapping
+        self.seen_types = OrderedDict()
+
         # Ensure all necessary argument values are present and valid
         form = self.get_argument_form(request, *args, **kwargs)
         self.argument_form = form
