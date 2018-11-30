@@ -918,8 +918,8 @@ class SectionMenu(DefinesSubMenuTemplatesMixin, MenuFromPage):
 
         active_class = ''
         current_page = contextual_vals.current_page
-        if option_vals.apply_active_classes and current_page:
-            if root_page.id == current_page.id:
+        if option_vals.apply_active_classes:
+            if current_page and root_page.id == current_page.id:
                 # `root_page` is the current page, so should probably
                 # have the 'active' class. But, not if there's going to be a
                 # 'repeated item' in the menu items (in which case, the
@@ -932,7 +932,7 @@ class SectionMenu(DefinesSubMenuTemplatesMixin, MenuFromPage):
                     active_class = settings.ACTIVE_ANCESTOR_CLASS
                 else:
                     active_class = settings.ACTIVE_CLASS
-            elif current_page.path.startswith(root_page.path):
+            elif root_page.id in contextual_vals.current_page_ancestor_ids:
                 active_class = settings.ACTIVE_ANCESTOR_CLASS
         root_page.active_class = active_class
         self.root_page = root_page
