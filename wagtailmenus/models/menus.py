@@ -16,7 +16,10 @@ from wagtail.core.models import Page, Site
 
 from wagtailmenus import forms, panels
 from wagtailmenus.conf import constants, settings
-from wagtailmenus.utils.deprecation import RemovedInWagtailMenus3Warning
+from wagtailmenus.utils.deprecation import (
+    RemovedInWagtailMenus213Warning, RemovedInWagtailMenus3Warning
+)
+from wagtailmenus.utils.inspection import accepts_kwarg
 from wagtailmenus.utils.misc import get_site_from_request
 from .menuitems import MenuItem
 from .mixins import DefinesSubMenuTemplatesMixin
@@ -656,8 +659,19 @@ class Menu:
 
         if option_vals.use_absolute_page_urls:
             item.href = item.get_full_url(request=request)
+        elif accepts_kwarg(item.relative_url, 'request'):
+            item.href = item.relative_url(current_site, request)
         else:
-            item.href = item.relative_url(current_site, request=request)
+            warnings.warn(
+                "The relative_url() method on custom MenuItem classes "
+                "must accept a 'request' keyword argument. Please update "
+                "the method signature on your {} class. It will be "
+                "mandatory in Wagtail 2.13.".format(
+                    item.__class__.__name__
+                ),
+                category=RemovedInWagtailMenus213Warning
+            )
+            item.href = item.relative_url(current_site)
 
         # ---------------------------------------------------------------------
         # Set additional attributes
@@ -668,8 +682,6 @@ class Menu:
 
         if item.has_children_in_menu and option_vals.add_sub_menus_inline:
             item.sub_menu = self.create_sub_menu(page)
-        else:
-            item.sub_menu = None
 
         return item
 
@@ -880,10 +892,11 @@ class SectionMenu(DefinesSubMenuTemplatesMixin, MenuFromPage):
 
     def prepare_to_render(self, request, contextual_vals, option_vals):
         super().prepare_to_render(request, contextual_vals, option_vals)
-        root_page = self.root_page
 
         # Replace self.root_page with it's 'specific' equivalent if it looks
         # like it'll help with modifying menu items or aid consistency
+        root_page = self.root_page
+
         if self.use_specific and type(root_page) is Page and (
             self.use_specific >= constants.USE_SPECIFIC_TOP_LEVEL or
             hasattr(root_page.specific_class, 'modify_submenu_items')
@@ -895,20 +908,23 @@ class SectionMenu(DefinesSubMenuTemplatesMixin, MenuFromPage):
             root_page.title
         )
         if option_vals.use_absolute_page_urls:
-            href = root_page.get_full_url(request=self.request)
+            if hasattr(root_page, 'get_full_url'):
+                href = root_page.get_full_url(request=self.request)
+            else:
+                href = root_page.full_url
         else:
             href = root_page.relative_url(contextual_vals.current_site)
         root_page.href = href
 
         active_class = ''
-        if option_vals.apply_active_classes:
-            current_page = contextual_vals.current_page
-            if current_page and root_page.id == current_page.id:
+        current_page = contextual_vals.current_page
+        if option_vals.apply_active_classes and current_page:
+            if root_page.id == current_page.id:
                 # `root_page` is the current page, so should probably
                 # have the 'active' class. But, not if there's going to be a
                 # 'repeated item' in the menu items (in which case, the
                 # repeated item should get the active class)
-                if not (
+                if (
                     option_vals.allow_repeating_parents and
                     option_vals.use_specific and
                     getattr(root_page, 'repeat_in_subnav', False)
@@ -916,7 +932,7 @@ class SectionMenu(DefinesSubMenuTemplatesMixin, MenuFromPage):
                     active_class = settings.ACTIVE_ANCESTOR_CLASS
                 else:
                     active_class = settings.ACTIVE_CLASS
-            elif root_page.id in contextual_vals.current_page_ancestor_ids:
+            elif current_page.path.startswith(root_page.path):
                 active_class = settings.ACTIVE_ANCESTOR_CLASS
         root_page.active_class = active_class
         self.root_page = root_page
