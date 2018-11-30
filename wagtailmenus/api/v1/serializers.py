@@ -84,5 +84,5 @@ class ChildrenMenuSerializer(Serializer):
 
 
 class SectionMenuSerializer(Serializer):
-    section_root_page = MenuItemSerializer(source='root_page')
+    section_root = MenuItemSerializer(source='root_page')
     items = ListSerializer(child=MenuItemSerializer())
