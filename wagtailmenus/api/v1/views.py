@@ -152,7 +152,7 @@ class FlatMenuGeneratorView(MenuGeneratorView):
     """
     Returns a JSON representation of a 'flat menu' (including menu items) matching the supplied arguments.
     """
-    menu_class = settings.models.MAIN_MENU_MODEL
+    menu_class = settings.models.FLAT_MENU_MODEL
     argument_form_class = forms.FlatMenuGeneratorArgumentForm
     menu_serializer_class = serializers.FlatMenuSerializer
 
