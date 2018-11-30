@@ -1,23 +1,42 @@
 # NOTE: All supported app settings must be added here
 
 
-# -----------------
-# REST API settings
-# -----------------
+# -------------------------
+# Menu object serialization
+# -------------------------
 
-GENERAL_MENU_ITEM_SERIALIZER_FIELDS = ('text', 'href', 'page', 'children')
+MAIN_MENU_FIELDS = ('site', 'items')
 
-PAGE_SERIALIZER_FIELDS = ('id', 'title', 'slug')
+FLAT_MENU_FIELDS = ('site', 'handle', 'title', 'heading', 'items')
 
-MAIN_MENU_ITEM_SERIALIZER_FIELDS = ('text', 'href', 'handle', 'page', 'children')
 
-FLAT_MENU_ITEM_SERIALIZER_FIELDS = ('text', 'href', 'handle', 'page', 'children')
+# -----------------------
+# Menu item serialization
+# -----------------------
 
-PARENT_PAGE_SERIALIZER_FIELDS = ('id', 'title', 'slug')
+MENU_ITEM_FIELDS = ('text', 'href', 'active_class', 'page', 'children')
 
-MAIN_MENU_SERIALIZER_FIELDS = ('site', 'items')
+FLAT_MENU_ITEM_FIELDS = ('text', 'href', 'handle', 'active_class', 'page', 'children')
 
-FLAT_MENU_SERIALIZER_FIELDS = ('site', 'handle', 'title', 'heading', 'items')
+MAIN_MENU_ITEM_FIELDS = ('text', 'href', 'handle', 'active_class', 'page', 'children')
+
+
+# ------------------
+# Page serialization
+# ------------------
+
+default_page_fields = ('id', 'title', 'slug', 'type')
+
+SECTION_ROOT_PAGE_FIELDS = default_page_fields
+
+PARENT_PAGE_FIELDS = default_page_fields
+
+MENU_ITEM_PAGE_FIELDS = default_page_fields
+
+MAIN_MENU_ITEM_PAGE_FIELDS = default_page_fields
+
+FLAT_MENU_ITEM_PAGE_FIELDS = default_page_fields
+
 
 # ----------
 # Deprecated
