@@ -352,7 +352,7 @@ class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
         If not already present, attempt to derive a 'section_root_page' value
         from page values in ``cleaned_data`` update supplied ``data`` dictionary to include it.
         """
-        if cleaned_data['section_root_page']:
+        if cleaned_data.get('section_root_page'):
             return
 
         source_page = cleaned_data.get('current_page') or cleaned_data.get('best_match_page')
@@ -380,7 +380,7 @@ class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
         we'll leave 'accept_best_match' as True by default.
         """
         force_derivation = force_derivation or (
-            not cleaned_data['section_root_page'] and
+            not cleaned_data.get('section_root_page') and
             not cleaned_data.get('current_page')
         )
         super().derive_current_page(cleaned_data, force_derivation, accept_best_match)
