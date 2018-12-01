@@ -358,10 +358,7 @@ class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
         source_page = cleaned_data.get('current_page') or cleaned_data.get('best_match_page')
         section_root_depth = settings.SECTION_ROOT_DEPTH
         if source_page is None or source_page.depth < section_root_depth:
-            self.add_error('section_root_page', _(
-                "This value was not provided and could not be derived from "
-                "other values."
-            ))
+            self.add_error('section_root_page', UNDERIVABLE_MSG)
             return
         if source_page.depth > section_root_depth:
             cleaned_data['section_root_page'] = source_page.get_ancestors().get(
