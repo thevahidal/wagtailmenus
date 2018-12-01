@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
 from wagtail.core.models import Page, Site
 
@@ -6,6 +7,7 @@ from wagtailmenus.conf import constants
 
 
 class JavascriptStyleBooleanSelect(forms.Select):
+
     def __init__(self, attrs=None):
         choices = (
             ('true', _('Yes')),
@@ -14,27 +16,43 @@ class JavascriptStyleBooleanSelect(forms.Select):
         super().__init__(attrs, choices)
 
     def format_value(self, value):
-        return {
-            True: 'true',
-            False: 'false',
-            'true': 'true',
-            'false': 'false',
-        }[value]
+        try:
+            return {
+                True: 'true',
+                False: 'false',
+                'True': 'true',
+                'False': 'false',
+                'true': 'true',
+                'false': 'false',
+                1: 'true',
+                0: 'false',
+                '1': 'true',
+                '0': 'false',
+            }[value]
+        except KeyError:
+            return ''
 
     def value_from_datadict(self, data, files, name):
         value = data.get(name)
         return {
             True: True,
+            False: False,
             'True': True,
             'False': False,
-            False: False,
             'true': True,
             'false': False,
+            '1': True,
+            '0': False,
         }.get(value)
 
 
 class BooleanChoiceField(forms.BooleanField):
     widget = JavascriptStyleBooleanSelect
+
+    def clean(self, value):
+        if value is None:
+            raise ValidationError("This value must be 'true' or 'false'")
+        return value
 
 
 class UseSpecificChoiceField(forms.TypedChoiceField):
