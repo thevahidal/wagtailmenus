@@ -95,8 +95,8 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
         label=_('Use absolute page URLs'),
         help_text=_(
             "Whether the view should use absolute page URLs instead of "
-            "relative ones for menu items that link to pages. For example, "
-            "'https://www.site.com/page-url' intead of '/page-url'."
+            "relative ones for menu items that link to pages, even if the "
+            "page is within the page tree for the provided 'site'."
         )
     )
 
@@ -314,7 +314,7 @@ class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
         help_text=_(
             "The root page for the 'section', whose children and other "
             "decendents you want show menu items for. If not supplied, the "
-            "view will attempt to derive the value from 'current_page' or "
+            "view will attempt to derive this from 'current_page' or "
             "'current_url'."
         )
     )
