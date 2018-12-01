@@ -200,8 +200,8 @@ class BaseMenuModelGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
 class MainMenuGeneratorArgumentForm(BaseMenuModelGeneratorArgumentForm):
     site = fields.SiteChoiceField(
         help_text=_(
-            "The site you are generating a menu for. Used to retrieve "
-            "the relevant menu object from the database."
+            "The ID of the Wagtail Site you are generating a menu for. Used to "
+            "retrieve the relevant menu object from the database."
         ),
     )
 
