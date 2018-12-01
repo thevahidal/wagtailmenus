@@ -10,17 +10,21 @@ from wagtailmenus.utils.misc import make_dummy_request
 from . import form_fields as fields
 
 
+UNDERIVABLE_MSG = _(
+    "This value was not provided and could not be derived from other values."
+)
+
+
 class BaseAPIViewArgumentForm(forms.Form):
     """
-    A form class that looks for 'view' and 'request' arguments at initialisation,
+    A form class that accepts 'view' and 'request' arguments at initialisation,
     and is capable of rendering itself to a template (in a similar fashion to
-    ``django_filters.rest_framework.DjangoFilterBackend``). Schema support
-    may also have to be added in future.
+    ``django_filters.rest_framework.DjangoFilterBackend``).
     """
-    def __init__(self, *args, **kwargs):
-        self._view = kwargs.pop('view', None)
-        self._request = kwargs.pop('request', None)
-        super().__init__(*args, **kwargs)
+    def __init__(self, view, request, **kwargs):
+        self._view = view
+        self._request = request
+        super().__init__(**kwargs)
 
     @property
     def template(self):
@@ -53,6 +57,7 @@ class BaseAPIViewArgumentForm(forms.Form):
 
 class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
     current_url = forms.URLField(
+        required=False,
         label=_("Current URL"),
         help_text=_(
             "The full URL of the page you are generating the menu for. "
@@ -62,7 +67,6 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
         ),
     )
     site = fields.SiteChoiceField(
-        required=False,
         help_text=_(
             "The site you are generating the menu for. Affects how URLs for "
             "page links are calculated (using relative or absolute URLs). "
@@ -109,107 +113,83 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
         self._dummy_request = None
 
     def clean(self):
-        """
-        Allow 'site' and 'current_page' to be derived from other values if they
-        were not provided as data.
-        """
-        data = self.cleaned_data
-
-        if not data['site']:
-            self.derive_site(data)
-
-        if not data['current_page']:
-            self.derive_current_page(data)
-
-        if data.get('apply_active_classes'):
-            self.derive_ancestor_page_ids(data)
-
-        return data
+        cleaned_data = super().clean()
+        self.derive_current_page(cleaned_data)
+        self.derive_ancestor_page_ids(cleaned_data)
+        return cleaned_data
 
     def get_dummy_request(self):
         if self._dummy_request:
             return self._dummy_request
-        url = self.cleaned_data.get('current_url')
-        if not url:
-            return None
+        try:
+            url = self.cleaned_data['current_url']
+        except KeyError:
+            return
+
         self._dummy_request = make_dummy_request(url=url, original_request=self._request)
         return self._dummy_request
 
-    def derive_site(self, data):
-        if data.get('current_url'):
-            request = self.get_dummy_request()
-            try:
-                data['site'] = Site.find_for_request(request)
-            except Site.DoesNotExist:
-                self.add_error('site', _(
-                    "This value was not provided and could not be derived "
-                    "from 'current_url'."
-                ))
+    def derive_current_page(self, cleaned_data, force_derivation=False, accept_best_match=True):
+        """
+        If necessary, attempts to derive a 'current_page' value from other
+        values in ``cleaned_data``, and add that value to ``cleaned_data``.
 
-    def derive_current_page(self, data, force_derivation=False, accept_best_match=True):
-        if not force_derivation and not data.get('apply_active_classes'):
+        If ``accept_best_match`` is True, and a matching page isn't found on
+        the first attempt, the method will recursively remove components from
+        the url and retry until a math is found. If this yiels a result, it
+        will be added to ``cleaned_data`` as 'best_match_page'.
+
+        By default, the page is only derived when 'apply_active_classes' is
+        True. But, 'force_derivation' can be used to force derivation.
+        """
+        if cleaned_data.get('current_page'):
             return
 
-        # 'current_url' and 'site' values are required to derive a
-        # 'current_page' value, so we only want to continue if both are present.
+        if not force_derivation and not cleaned_data.get('apply_active_classes'):
+            return
 
-        # raising errors is only necessary if derivation if is crucial (e.g.
-        # for deriving other values from) - in which case 'force_derivation'
-        # will be True
-        if not data.get('current_url'):
+        if not cleaned_data.get('site') or not cleaned_data.get('current_url'):
             if force_derivation:
-                self.add_error('current_page', _(
-                    "This value was not provided and could not be derived from "
-                    "'current_url'."
-                ))
-            return
-        elif not data['site']:
-            if force_derivation:
-                self.add_error('current_page', _(
-                    "This value was not provided and could not be derived, "
-                    "because 'site' cannot be determined."
-                ))
+                self.add_error('current_page', UNDERIVABLE_MSG)
             return
 
-        site = data['site']
+        site = cleaned_data['site']
         request = self.get_dummy_request()
-        path_components = [pc for pc in request.path.split('/') if pc]
         first_run = True
-        best_match = None
-        while path_components and best_match is None:
+        match = None
+        path_components = [pc for pc in request.path.split('/') if pc]
+
+        while match is None and path_components:
             try:
-                best_match = site.root_page.specific.route(request, path_components)[0]
+                match = site.root_page.specific.route(request, path_components)[0]
                 if first_run:
-                    # A page was found matching the exact path, so it's
-                    # safe to assume it's the 'current page'
-                    data['current_page'] = best_match
+                    cleaned_data['current_page'] = match
                 else:
-                    # This could still be useful for deriving 'ancestor_ids'
-                    # or 'section_root_page'
-                    data['best_match_page'] = best_match
+                    cleaned_data['best_match_page'] = match
             except Http404:
                 if not accept_best_match:
-                    break  # give up
-                # Remove a path component and try again
+                    break
                 path_components.pop()
-            first_run = False
+                first_run = False
 
-        if not accept_best_match and not data['current_page']:
-            self.add_error('current_page', _(
-                "This value was not provided and could not be derived from "
-                "'current_url'."
-            ))
+        if not accept_best_match and not cleaned_data['current_page']:
+            self.add_error('current_page', UNDERIVABLE_MSG)
 
-    def derive_ancestor_page_ids(self, data):
-        page = data.get('current_page') or data.get('best_match_page')
-        if page:
-            data['ancestor_page_ids'] = set(
-                page.get_ancestors(inclusive=data.get('current_page') is None)
+    def derive_ancestor_page_ids(self, cleaned_data):
+        """
+        If required, attempts to derive a set of 'ancestor_page_ids' from
+        page values in ``cleaned_data`` and add them to ``cleaned_data``.
+        """
+        source_page = cleaned_data.get('current_page') or cleaned_data.get('best_match_page')
+        if source_page and cleaned_data.get('apply_active_classes'):
+            ancestor_ids = set(
+                source_page.get_ancestors(inclusive=cleaned_data.get('current_page') is None)
                 .filter(depth__gte=settings.SECTION_ROOT_DEPTH)
                 .values_list('id', flat=True)
             )
         else:
-            data['ancestor_page_ids'] = ()
+            ancestor_ids = ()
+        cleaned_data['ancestor_page_ids'] = ancestor_ids
 
 
 class BaseMenuModelGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
@@ -225,7 +205,6 @@ class BaseMenuModelGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
 
 class MainMenuGeneratorArgumentForm(BaseMenuModelGeneratorArgumentForm):
     site = fields.SiteChoiceField(
-        required=False,
         help_text=_(
             "The site you are generating a menu for. Used to retrieve "
             "the relevant menu object from the database. If not supplied, the "
@@ -304,31 +283,24 @@ class ChildrenMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
         self.fields['parent_page'].queryset = Page.objects.filter(depth__gt=1)
 
     def clean(self):
-        """
-        Allow 'parent_page' to be derived from other values if it was not
-        provided.
-        """
-        data = super().clean()
+        cleaned_data = super().clean()
+        self.derive_parent_page(cleaned_data)
+        return cleaned_data
 
-        if not data['parent_page']:
-            self.derive_parent_page(data)
-
-        return data
-
-    def derive_parent_page(self, data):
+    def derive_parent_page(self, cleaned_data):
         """
-        If possible, derive a value for 'parent_page' and update the supplied
-        ``data`` dictionary to include it.
+        If necessary, and 'current_page' has been provided or successfully
+        derived, add the same value to ``cleaned_data`` as 'parent_page'.
         """
-        if data.get('current_page'):
-            data['parent_page'] = data['current_page']
+        if cleaned_data.get('parent_page'):
+            return
+
+        if cleaned_data.get('current_page'):
+            cleaned_data['parent_page'] = cleaned_data['current_page']
         else:
-            self.add_error('parent_page', _(
-                "This value was not provided and could not be derived from "
-                "'current_page' or 'current_url'."
-            ))
+            self.add_error('parent_page', UNDERIVABLE_MSG)
 
-    def derive_current_page(self, data, force_derivation=False, accept_best_match=False):
+    def derive_current_page(self, cleaned_data, force_derivation=False, accept_best_match=False):
         """
         Overrides ArgValidatorForm.derive_current_page(),
         because if neither 'parent_page' or 'current_page' have been
@@ -336,12 +308,13 @@ class ChildrenMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
         can serve as a stand-in for 'parent_page'.
 
         A 'best match' is not a good enough stand-in for 'parent_page', so we
-        the 'accept_best_match' is False by default.
+        use a False value for 'accept_best_match' by default.
         """
         force_derivation = force_derivation or (
-            not data['parent_page'] and not data.get('current_page')
+            not cleaned_data.get('parent_page') and
+            not cleaned_data.get('current_page')
         )
-        super().derive_current_page(data, force_derivation, accept_best_match)
+        super().derive_current_page(cleaned_data, force_derivation, accept_best_match)
 
 
 class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
@@ -379,33 +352,33 @@ class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
         Allow 'section_root_page' to be derived from other values if it was not
         provided.
         """
-        data = super().clean()
+        cleaned_data = super().clean()
+        self.derive_section_root_page(cleaned_data)
+        return cleaned_data
 
-        if not data['section_root_page']:
-            self.derive_section_root_page(data)
-
-        return data
-
-    def derive_section_root_page(self, data):
+    def derive_section_root_page(self, cleaned_data):
         """
-        If possible, derive a value for 'section_root_page' and update the
-        supplied ``data`` dictionary to include it.
+        If not already present, attempt to derive a 'section_root_page' value
+        from page values in ``cleaned_data`` update supplied ``data`` dictionary to include it.
         """
-        page = data.get('current_page') or data.get('best_match_page')
+        if cleaned_data['section_root_page']:
+            return
+
+        source_page = cleaned_data.get('current_page') or cleaned_data.get('best_match_page')
         section_root_depth = settings.SECTION_ROOT_DEPTH
-        if page is None or page.depth < section_root_depth:
+        if source_page is None or source_page.depth < section_root_depth:
             self.add_error('section_root_page', _(
                 "This value was not provided and could not be derived from "
-                "'current_page' or 'current_url'."
+                "other values."
             ))
             return
-        if page.depth > section_root_depth:
-            data['section_root_page'] = page.get_ancestors().get(
+        if source_page.depth > section_root_depth:
+            cleaned_data['section_root_page'] = source_page.get_ancestors().get(
                 depth__exact=section_root_depth)
         else:
-            data['section_root_page'] = page
+            cleaned_data['section_root_page'] = source_page
 
-    def derive_current_page(self, data, force_derivation=False, accept_best_match=True):
+    def derive_current_page(self, cleaned_data, force_derivation=False, accept_best_match=True):
         """
         Overrides ArgValidatorForm.derive_current_page(),
         because if neither 'section_root_page' or 'current_page' have been
@@ -416,6 +389,7 @@ class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
         we'll leave 'accept_best_match' as True by default.
         """
         force_derivation = force_derivation or (
-            not data['section_root_page'] and not data.get('current_page')
+            not cleaned_data['section_root_page'] and
+            not cleaned_data.get('current_page')
         )
-        super().derive_current_page(data, force_derivation, accept_best_match)
+        super().derive_current_page(cleaned_data, force_derivation, accept_best_match)
