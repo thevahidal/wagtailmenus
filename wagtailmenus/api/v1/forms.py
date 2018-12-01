@@ -60,49 +60,43 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
         required=False,
         label=_("Current URL"),
         help_text=_(
-            "The full URL of the page you are generating the menu for. "
-            "Used for deriving 'site' and 'current_page' values in cases "
-            "where those values are unavailable or not applicable. For "
-            "example, if the URL does not map to a Page object exactly."
+            "The URL you are generating the menu for (relative to the site "
+            "root). If you are generating a menu for a URL that does not map "
+            "exactly to a Page object, you can provide this instead of "
+            "'current_page' to help with derivation of other values."
         ),
     )
     site = fields.SiteChoiceField(
         help_text=_(
-            "The site you are generating the menu for. Affects how URLs for "
-            "page links are calculated (using relative or absolute URLs). "
-            "Supply where possible for optimal performance. If not supplied, "
-            "the view will attempt to derive this value from 'current_url'."
+            "The ID of the Wagtail Site you are generating the menu for."
         ),
     )
     current_page = fields.PageChoiceField(
         required=False,
         help_text=_(
-            "The page you are generating the menu for. Used to determine "
-            "which 'active classes' are applied to menu items when using the "
-            "'apply_active_classes' option, and for deriving other values "
-            "from in some cases. If not supplied, the view will attempt to "
-            "derive this value from 'current_url'."
+            "The ID of the Wagtail Page you are generating the menu for."
         ),
     )
     apply_active_classes = fields.BooleanChoiceField(
         help_text=_(
-            "Add 'active' and 'ancestor' classes to menu items to help "
-            "indicate a user's current position within the menu structure."
+            "Whether the view should set an 'active_class' attribute on menu "
+            "items to help indicate a user's current position within the menu "
+            "structure."
         ),
     )
     allow_repeating_parents = fields.BooleanChoiceField(
         help_text=_(
-            "Permit pages inheriting from MenuPage or MenuPageMixin "
-            "to add duplicates of themselves to their 'children' when "
-            "appearing as menu items."
+            "Whether the view should allow pages inheriting from MenuPage or "
+            "MenuPageMixin to add duplicates of themselves to their "
+            "'children' when appearing as menu items."
         )
     )
     use_absolute_page_urls = fields.BooleanChoiceField(
         label=_('Use absolute page URLs'),
         help_text=_(
-            "When calculating URLs for menu items that link to pages, use the "
-            "full URL where possible. For example: "
-            "'https://www.site.com/page-url'."
+            "Whether the view should use absolute page URLs instead of "
+            "relative ones for menu items that link to pages. For example, "
+            "'https://www.site.com/page-url' intead of '/page-url'."
         )
     )
 
@@ -207,10 +201,7 @@ class MainMenuGeneratorArgumentForm(BaseMenuModelGeneratorArgumentForm):
     site = fields.SiteChoiceField(
         help_text=_(
             "The site you are generating a menu for. Used to retrieve "
-            "the relevant menu object from the database. If not supplied, the "
-            "view will attempt to derive this value from 'current_url'. "
-            "However, for optimal performance, it's recommended that you "
-            "supply it where possible."
+            "the relevant menu object from the database."
         ),
     )
 
@@ -321,10 +312,10 @@ class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
     section_root_page = fields.PageChoiceField(
         required=False,
         help_text=_(
-            "The root page for the current 'section', whose children and "
-            "other decendents you want show menu items for. If not supplied, "
-            "the view will attempt to derive this value from 'current_page' "
-            "or 'current_url'."
+            "The root page for the 'section', whose children and other "
+            "decendents you want show menu items for. If not supplied, the "
+            "view will attempt to derive the value from 'current_page' or "
+            "'current_url'."
         )
     )
     max_levels = fields.MaxLevelsChoiceField()
