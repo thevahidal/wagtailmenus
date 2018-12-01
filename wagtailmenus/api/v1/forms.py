@@ -259,9 +259,9 @@ class ChildrenMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
 
     field_order = (
         'site',
-        'parent_page',
         'current_page',
         'current_url',
+        'parent_page',
         'max_levels',
         'use_specific',
         'apply_active_classes',
@@ -323,9 +323,9 @@ class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
 
     field_order = (
         'site',
-        'section_root_page',
         'current_page',
         'current_url',
+        'section_root_page',
         'max_levels',
         'use_specific',
         'apply_active_classes',
