@@ -206,9 +206,9 @@ class MainMenuGeneratorArgumentForm(BaseMenuModelGeneratorArgumentForm):
     )
 
     field_order = (
-        'current_url',
         'site',
         'current_page',
+        'current_url',
         'max_levels',
         'use_specific',
         'apply_active_classes',
@@ -233,11 +233,11 @@ class FlatMenuGeneratorArgumentForm(BaseMenuModelGeneratorArgumentForm):
     )
 
     field_order = (
-        'current_url',
-        'handle',
         'site',
+        'handle',
         'fall_back_to_default_site_menus',
         'current_page',
+        'current_url',
         'max_levels',
         'use_specific',
         'apply_active_classes',
@@ -258,10 +258,10 @@ class ChildrenMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
     use_specific = fields.UseSpecificChoiceField()
 
     field_order = (
-        'current_url',
-        'parent_page',
         'site',
+        'parent_page',
         'current_page',
+        'current_url',
         'max_levels',
         'use_specific',
         'apply_active_classes',
@@ -322,10 +322,10 @@ class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
     use_specific = fields.UseSpecificChoiceField()
 
     field_order = (
-        'current_url',
-        'section_root_page',
         'site',
+        'section_root_page',
         'current_page',
+        'current_url',
         'max_levels',
         'use_specific',
         'apply_active_classes',
