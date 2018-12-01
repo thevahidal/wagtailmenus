@@ -56,9 +56,9 @@ class MenuGeneratorView(APIView):
         data = defaults.copy()
         data.update(request.GET.items())
         return {
-            'data': data,
             'request': request,
             'view': self,
+            'data': data,
         }
 
     def get_argument_form_defaults(self, request):
