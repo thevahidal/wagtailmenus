@@ -70,10 +70,6 @@ class UseSpecificChoiceField(forms.TypedChoiceField):
             'choices': choices,
             'coerce': int,
             'empty_value': None,
-            'help_text': _(
-                "How 'specific' page objects should be utilised when "
-                "generating the result."
-            )
         }
         kwargs.update({k: v for k, v in defaults.items() if k not in kwargs})
         super().__init__(*args, **kwargs)
@@ -94,10 +90,6 @@ class MaxLevelsChoiceField(forms.TypedChoiceField):
             'choices': choices,
             'coerce': int,
             'empty_value': None,
-            'help_text': _(
-                "The maximum number of levels of menu items that should be "
-                "included in the result."
-            )
         }
         kwargs.update({k: v for k, v in defaults.items() if k not in kwargs})
         super().__init__(*args, **kwargs)
