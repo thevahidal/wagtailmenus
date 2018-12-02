@@ -136,15 +136,14 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
         By default, the page is only derived when 'apply_active_classes' is
         True. But, 'force_derivation' can be used to force derivation.
         """
-        if cleaned_data.get('current_page'):
-            return
-
-        if not force_derivation and not cleaned_data.get('apply_active_classes'):
-            return
-
-        if not cleaned_data.get('site') or not cleaned_data.get('current_url'):
-            if force_derivation:
-                self.add_error('current_page', UNDERIVABLE_MSG)
+        if(
+            cleaned_data.get('current_page') or
+            not cleaned_data.get('site') or
+            not cleaned_data.get('current_url') or (
+                not force_derivation and
+                not cleaned_data.get('apply_active_classes')
+            )
+        ):
             return
 
         site = cleaned_data['site']
