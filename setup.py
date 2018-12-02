@@ -15,6 +15,7 @@ branch_url = "%stree/stable/%s" % (base_url, stable_branch_name)
 # Essential dependencies
 requires = [
     'django-cogwheels==0.2',
+    'djangorestframework-recursive==0.1.2',
 ]
 
 testing_extras = [
