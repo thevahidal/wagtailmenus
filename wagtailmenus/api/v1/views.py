@@ -74,16 +74,14 @@ class MenuGeneratorView(APIView):
         return self.get_argument_form_class()(**init_kwargs)
 
     def get_argument_form_kwargs(self, request):
-        defaults = self.get_argument_form_defaults(request)
-        data = defaults.copy()
-        data.update(request.GET.items())
         return {
             'request': request,
             'view': self,
-            'data': data,
+            'data': request.POST or request.GET,
+            'initial': self.get_argument_form_initial(request),
         }
 
-    def get_argument_form_defaults(self, request):
+    def get_argument_form_initial(self, request):
         return {
             'max_levels': self.max_levels_default,
             'use_specific': self.use_specific_default,
@@ -188,8 +186,8 @@ class FlatMenuGeneratorView(MenuGeneratorView):
     # argument defaults
     fall_back_to_default_site_menus_default = True
 
-    def get_argument_form_defaults(self, request):
-        initial = super().get_argument_form_defaults(request)
+    def get_argument_form_initial(self, request):
+        initial = super().get_argument_form_initial(request)
         initial['fall_back_to_default_site_menus'] = self.fall_back_to_default_site_menus_default
         return initial
 
