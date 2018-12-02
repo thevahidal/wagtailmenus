@@ -56,6 +56,11 @@ class BaseAPIViewArgumentForm(forms.Form):
 
 
 class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
+    site = fields.SiteChoiceField(
+        help_text=_(
+            "The ID of the Wagtail Site you are generating the menu for."
+        ),
+    )
     current_url = forms.URLField(
         required=False,
         label=_("Current URL"),
@@ -64,11 +69,6 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
             "root). If you are generating a menu for a URL that does not map "
             "exactly to a Page object, you can provide this instead of "
             "'current_page' to help with derivation of other values."
-        ),
-    )
-    site = fields.SiteChoiceField(
-        help_text=_(
-            "The ID of the Wagtail Site you are generating the menu for."
         ),
     )
     current_page = fields.PageChoiceField(
