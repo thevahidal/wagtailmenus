@@ -99,7 +99,8 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
         help_text=_(
             "Whether the view should set 'active_class' attributes on menu "
             "items to help indicate a user's current position within the menu "
-            "structure."
+            "structure. Defaults to the relevant setting value for this menu "
+            "type."
         ),
     )
     allow_repeating_parents = fields.BooleanChoiceField(
@@ -107,7 +108,8 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
         help_text=_(
             "Whether the view should allow pages inheriting from MenuPage or "
             "MenuPageMixin to add duplicates of themselves to their "
-            "'children' when appearing as menu items."
+            "'children' when appearing as menu items. Defaults to the "
+            "relevant setting value for this menu type."
         )
     )
     use_absolute_page_urls = fields.BooleanChoiceField(
@@ -116,7 +118,8 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
         help_text=_(
             "Whether the view should use absolute page URLs instead of "
             "relative ones for menu items that link to pages, even if the "
-            "page is within the page tree for the provided 'site'."
+            "page is within the page tree for the provided 'site'. Defaults "
+            "to the relevant setting value for this menu type."
         )
     )
 
