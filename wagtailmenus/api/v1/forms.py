@@ -18,13 +18,32 @@ UNDERIVABLE_MSG = _(
 class BaseAPIViewArgumentForm(forms.Form):
     """
     A form class that accepts 'view' and 'request' arguments at initialisation,
-    and is capable of rendering itself to a template (in a similar fashion to
-    ``django_filters.rest_framework.DjangoFilterBackend``).
+    is capable of rendering itself to a template (in a similar fashion to
+    ``django_filters.rest_framework.DjangoFilterBackend``), and has some
+    custom clean() behaviour that makes it more useful when data is being
+    supplied via GET instead of just POST.
     """
     def __init__(self, view, request, **kwargs):
         self._view = view
         self._request = request
         super().__init__(**kwargs)
+
+    def full_clean(self):
+        """
+        Because non-required arguements are very often not included in supplied
+        data, initial data misses it's usual opportunity to become a default
+        value. This override changes that by supplementing ``self.data`` with
+        initial values from the form before cleaning.
+        """
+        supplementary_vals = {}
+        for name, field in self.fields.items():
+            if name not in self.data and name in self.initial:
+                supplementary_vals[name] = self.initial[name]
+        if supplementary_vals:
+            if not getattr(self.data, '_mutable', True):
+                self.data = self.data.copy()
+            self.data.update(supplementary_vals)
+        return super().full_clean()
 
     @property
     def template(self):
