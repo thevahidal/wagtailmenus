@@ -78,7 +78,24 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
             "The ID of the Wagtail Page you are generating the menu for."
         ),
     )
+    max_levels = fields.MaxLevelsChoiceField(
+        required=False,
+        help_text=_(
+            "The maximum number of levels of menu items that should be "
+            "included in the result. Defaults to the relevant setting value "
+            "for this menu type."
+        )
+    )
+    use_specific = fields.UseSpecificChoiceField(
+        required=False,
+        help_text=_(
+            "How 'specific' page objects should be utilised when generating "
+            "the result. Defaults to the relevant setting value for this menu "
+            "type."
+        )
+    )
     apply_active_classes = fields.BooleanChoiceField(
+        required=False,
         help_text=_(
             "Whether the view should set 'active_class' attributes on menu "
             "items to help indicate a user's current position within the menu "
@@ -86,6 +103,7 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
         ),
     )
     allow_repeating_parents = fields.BooleanChoiceField(
+        required=False,
         help_text=_(
             "Whether the view should allow pages inheriting from MenuPage or "
             "MenuPageMixin to add duplicates of themselves to their "
@@ -93,6 +111,7 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
         )
     )
     use_absolute_page_urls = fields.BooleanChoiceField(
+        required=False,
         label=_('Use absolute page URLs'),
         help_text=_(
             "Whether the view should use absolute page URLs instead of "
@@ -190,18 +209,28 @@ class BaseMenuModelGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
     max_levels = fields.MaxLevelsChoiceField(
         required=False,
         empty_label=_('Default: Use the value set for the menu object'),
+        help_text=_(
+            "The maximum number of levels of menu items that should be "
+            "included in the result. Defaults to the 'max_levels' field value "
+            "on the matching menu object."
+        ),
     )
     use_specific = fields.UseSpecificChoiceField(
         required=False,
         empty_label=_('Default: Use the value set for the menu object'),
+        help_text=_(
+            "How 'specific' page objects should be utilised when generating "
+            "the result. Defaults to the 'use_specific' field value on the "
+            "matching menu object."
+        ),
     )
 
 
 class MainMenuGeneratorArgumentForm(BaseMenuModelGeneratorArgumentForm):
     site = fields.SiteChoiceField(
         help_text=_(
-            "The ID of the Wagtail Site you are generating a menu for. Used to "
-            "retrieve the relevant menu object from the database."
+            "The ID of the Wagtail Site you are generating a menu for. Used "
+            "to retrieve the relevant menu object from the database."
         ),
     )
 
@@ -225,6 +254,7 @@ class FlatMenuGeneratorArgumentForm(BaseMenuModelGeneratorArgumentForm):
         )
     )
     fall_back_to_default_site_menus = fields.BooleanChoiceField(
+        required=False,
         help_text=_(
             "If a menu cannot be found matching the provided 'handle' for the "
             "supplied (or derived) site, use the flat menu defined for the "
@@ -254,8 +284,6 @@ class ChildrenMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
             "to 'current_page')."
         )
     )
-    max_levels = fields.MaxLevelsChoiceField()
-    use_specific = fields.UseSpecificChoiceField()
 
     field_order = (
         'site',
@@ -318,8 +346,6 @@ class SectionMenuGeneratorArgumentForm(BaseMenuGeneratorArgumentForm):
             "'current_url'."
         )
     )
-    max_levels = fields.MaxLevelsChoiceField()
-    use_specific = fields.UseSpecificChoiceField()
 
     field_order = (
         'site',
