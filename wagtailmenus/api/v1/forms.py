@@ -37,7 +37,7 @@ class BaseAPIViewArgumentForm(forms.Form):
         """
         supplementary_vals = {}
         for name, field in self.fields.items():
-            if name not in self.data and name in self.initial:
+            if self.data.get(name, '') == '' and name in self.initial:
                 supplementary_vals[name] = self.initial[name]
         if supplementary_vals:
             if not getattr(self.data, '_mutable', True):
