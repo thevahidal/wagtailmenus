@@ -4,12 +4,34 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework.views import APIView
 from rest_framework.renderers import JSONRenderer
+from rest_framework.reverse import reverse
 from rest_framework.response import Response
 
 from wagtailmenus.conf import settings
 from . import forms
 from . import renderers
 from . import serializers
+
+
+class MenuGeneratorIndexView(APIView):
+    name = "Menu Generation"
+
+    def get(self, request, *args, **kwargs):
+        # Return a plain {"name": "hyperlink"} response.
+        data = OrderedDict()
+        namespace = request.resolver_match.namespace
+        names = ('main_menu', 'flat_menu', 'section_menu', 'children_menu')
+        for url_name in names:
+            if namespace:
+                url_name = namespace + ':' + url_name
+            data[url_name] = reverse(
+                url_name,
+                args=args,
+                kwargs=kwargs,
+                request=request,
+                format=kwargs.get('format', None)
+            )
+        return Response(data)
 
 
 class MenuGeneratorView(APIView):
@@ -148,6 +170,7 @@ class MainMenuGeneratorView(MenuGeneratorView):
     """
     Returns a JSON representation of a 'main menu' (including menu items) matching the supplied arguments.
     """
+    name = _('Generate Main Menu')
     menu_class = settings.models.MAIN_MENU_MODEL
     argument_form_class = forms.MainMenuGeneratorArgumentForm
     menu_serializer_class = serializers.MainMenuSerializer
@@ -157,6 +180,7 @@ class FlatMenuGeneratorView(MenuGeneratorView):
     """
     Returns a JSON representation of a 'flat menu' (including menu items) matching the supplied arguments.
     """
+    name = _('Generate Flat Menu')
     menu_class = settings.models.FLAT_MENU_MODEL
     argument_form_class = forms.FlatMenuGeneratorArgumentForm
     menu_serializer_class = serializers.FlatMenuSerializer
@@ -174,6 +198,7 @@ class ChildrenMenuGeneratorView(MenuGeneratorView):
     """
     Returns a JSON representation of a 'children menu' (including menu items) matching the supplied arguments.
     """
+    name = _('Generate Children Menu')
     menu_class = settings.objects.CHILDREN_MENU_CLASS
     argument_form_class = forms.ChildrenMenuGeneratorArgumentForm
     menu_serializer_class = serializers.ChildrenMenuSerializer
@@ -188,6 +213,7 @@ class SectionMenuGeneratorView(MenuGeneratorView):
     """
     Returns a JSON representation of a 'section menu' (including menu items) matching the supplied arguments.
     """
+    name = _('Generate Section Menu')
     menu_class = settings.objects.SECTION_MENU_CLASS
     argument_form_class = forms.SectionMenuGeneratorArgumentForm
     menu_serializer_class = serializers.SectionMenuSerializer
