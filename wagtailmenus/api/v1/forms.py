@@ -80,7 +80,7 @@ class BaseMenuGeneratorArgumentForm(BaseAPIViewArgumentForm):
     )
     apply_active_classes = fields.BooleanChoiceField(
         help_text=_(
-            "Whether the view should set an 'active_class' attribute on menu "
+            "Whether the view should set 'active_class' attributes on menu "
             "items to help indicate a user's current position within the menu "
             "structure."
         ),
