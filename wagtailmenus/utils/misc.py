@@ -10,12 +10,14 @@ from wagtail.core.models import Page, Site
 from wagtailmenus.models.menuitems import MenuItem
 
 
-def get_site_from_request(request, fallback_to_default=True):
-    if getattr(request, 'site', None):
+def get_site_from_request(request):
+    if isinstance(getattr(request, 'site', None), Site):
+        # Site was added by Wagtail's SiteMiddleware
         return request.site
-    if fallback_to_default:
-        return Site.objects.filter(is_default_site=True).first()
-    return None
+    try:
+        return Site.find_for_request(request)
+    except Site.DoesNotExist:
+        return
 
 
 def derive_page(request, site, accept_best_match=True, max_subsequent_route_failures=3):

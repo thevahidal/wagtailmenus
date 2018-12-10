@@ -1,11 +1,18 @@
+from unittest import mock
+
+from django.http import Http404
 from django.test import RequestFactory, TestCase
 from wagtail.core.models import Page, Site
 
 from wagtailmenus.conf import defaults
-from wagtailmenus.utils.misc import derive_page, derive_section_root
+from wagtailmenus.utils.misc import (
+    derive_page, derive_section_root, get_page_from_request, get_site_from_request
+)
 from wagtailmenus.tests.models import (
     ArticleListPage, ArticlePage, LowLevelPage, TopLevelPage
 )
+
+request_factory = RequestFactory()
 
 
 class TestDerivePage(TestCase):
@@ -13,8 +20,6 @@ class TestDerivePage(TestCase):
     fixtures = ['test.json']
 
     def setUp(self):
-        # Every test needs access to the request factory.
-        self.rf = RequestFactory()
         self.site = Site.objects.select_related('root_page').first()
         # Prefetch the specific page, so that it doesn't count
         # toward the counted queries
@@ -24,7 +29,7 @@ class TestDerivePage(TestCase):
         self, url, expected_page, expected_num_queries, full_url_match_expected,
         accept_best_match=True, max_subsequent_route_failures=3
     ):
-        request = self.rf.get(url)
+        request = request_factory.get(url)
         # Set these to improve efficiency
         request.site = self.site
         request._wagtail_cached_site_root_paths = Site.get_site_root_paths()
@@ -229,3 +234,62 @@ class TestDeriveSectionRoot(TestCase):
             with self.assertNumQueries(0):
                 result = derive_section_root(self.page_with_depth_of_3)
                 self.assertIs(result, None)
+
+
+
+class TestGetSiteFromRequest(TestCase):
+
+    @mock.patch.object(Site, 'find_for_request')
+    def test_returns_site_attribute_from_request_if_a_site_object(self, mocked_method):
+        request = request_factory.get('/')
+        dummy_site = Site(hostname='beepboop')
+        request.site = dummy_site
+
+        result = get_site_from_request(request)
+        self.assertIs(result, dummy_site)
+        self.assertFalse(mocked_method.called)
+
+    @mock.patch.object(Site, 'find_for_request')
+    def test_find_for_request_called_if_site_attribute_is_not_a_site_object(self, mocked_method):
+        request = request_factory.get('/')
+        request.site = 'just a string'
+
+        get_site_from_request(request)
+        self.assertTrue(mocked_method.called)
+
+
+class TestGetPageFromRequest(TestCase):
+
+    @mock.patch.object(Page, 'route', side_effect=Http404('Not found'))
+    def test_attempts_match_until_path_components_are_exhausted(self, mocked_method):
+        path = '/news-and-events/latest-news/blah/'
+        path_components = [pc for pc in path.split('/') if pc]
+        request = request_factory.get(path)
+        site = Site.objects.first()
+
+        get_page_from_request(request, site=site)
+        self.assertEqual(mocked_method.call_count, len(path_components))
+
+    @mock.patch.object(Page, 'route', side_effect=Http404('Not found'))
+    def test_attempts_only_once_if_accept_best_match_is_false(self, mocked_method):
+        request = request_factory.get('/news-and-events/latest-news/blah/')
+        site = Site.objects.first()
+
+        get_page_from_request(request, site=site, accept_best_match=False)
+        self.assertEqual(mocked_method.call_count, 1)
+
+    @mock.patch.object(Page, 'route', return_value=(1, 2, 3))
+    def test_exact_match_is_true_if_result_found_on_first_attempt(self, mocked_method):
+        request = request_factory.get('/news-and-events/latest-news/blah/')
+        site = Site.objects.first()
+
+        page, exact_match = get_page_from_request(request, site)
+        self.assertIs(exact_match, True)
+
+    @mock.patch.object(Page, 'route', side_effect=[Http404('Not found'), (1, 2, 3)])
+    def test_exact_match_is_false_if_result_found_on_consecutive_attempt(self, mocked_method):
+        request = request_factory.get('/news-and-events/latest-news/blah/')
+        site = Site.objects.first()
+
+        page, exact_match = get_page_from_request(request, site)
+        self.assertIs(exact_match, False)
