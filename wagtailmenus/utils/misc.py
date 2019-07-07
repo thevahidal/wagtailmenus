@@ -84,8 +84,8 @@ def derive_section_root(page):
     if no such page can be identified. Results are dependant on the
     value of the ``WAGTAILMENUS_SECTION_ROOT_DEPTH`` setting.
     """
-    from wagtailmenus.conf import settings
-    desired_depth = settings.SECTION_ROOT_DEPTH
+    from wagtailmenus.conf import settings as wagtailmenus_settings
+    desired_depth = wagtailmenus_settings.SECTION_ROOT_DEPTH
     if page.depth == desired_depth:
         return page.specific
     if page.depth > desired_depth:
