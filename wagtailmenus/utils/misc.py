@@ -12,7 +12,6 @@ from wagtailmenus.models.menuitems import MenuItem
 
 def get_site_from_request(request):
     if isinstance(getattr(request, 'site', None), Site):
-        # Site was added by Wagtail's SiteMiddleware
         return request.site
     try:
         return Site.find_for_request(request)
