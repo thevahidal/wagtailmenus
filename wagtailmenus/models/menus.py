@@ -11,6 +11,8 @@ from django.utils.functional import cached_property, lazy
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from modelcluster.models import ClusterableModel
+from rest_framework import fields
+from wagtail.api import APIField
 from wagtail.core import hooks
 from wagtail.core.models import Page, Site
 
@@ -686,34 +688,30 @@ class SectionMenu(DefinesSubMenuTemplatesMixin, MenuFromPage):
     menu_instance_context_name = 'section_menu'
     related_templatetag_name = 'section_menu'
 
-    api_fields = (
-        'section_root',
-        'items'
-    )
+    section_root_api_fields = [
+        APIField('id'),
+        APIField('title'),
+        APIField('slug'),
+        APIField('type'),
+        APIField('menu_text', fields.CharField(read_only=True, source='text')),
+        APIField('url', fields.CharField(read_only=True, source='href')),
+        APIField('active_class', fields.CharField(read_only=True))
+    ]
 
-    section_root_api_fields = (
-        'id',
-        'text',
-        'href',
-        'active_class',
-        'slug',
-        'type',
-    )
+    item_api_fields = [
+        APIField('text'),
+        APIField('href'),
+        APIField('active_class'),
+        APIField('page'),
+        APIField('children'),
+    ]
 
-    item_api_fields = (
-        'text',
-        'href',
-        'active_class',
-        'page',
-        'children',
-    )
-
-    item_page_api_fields = (
-        'id',
-        'title',
-        'slug',
-        'type',
-    )
+    item_page_api_fields = [
+        APIField('id'),
+        APIField('title'),
+        APIField('slug'),
+        APIField('type'),
+    ]
 
     @classmethod
     def render_from_tag(
@@ -799,32 +797,27 @@ class ChildrenMenu(DefinesSubMenuTemplatesMixin, MenuFromPage):
     menu_instance_context_name = 'children_menu'
     related_templatetag_name = 'children_menu'
 
-    api_fields = (
-        'parent_page',
-        'items'
-    )
+    parent_page_api_fields = [
+        APIField('id'),
+        APIField('title'),
+        APIField('slug'),
+        APIField('type'),
+    ]
 
-    parent_page_api_fields = (
-        'id',
-        'title',
-        'slug',
-        'type',
-    )
+    item_api_fields = [
+        APIField('text'),
+        APIField('href'),
+        APIField('active_class'),
+        APIField('page'),
+        APIField('children'),
+    ]
 
-    item_api_fields = (
-        'text',
-        'href',
-        'active_class',
-        'page',
-        'children',
-    )
-
-    item_page_api_fields = (
-        'id',
-        'title',
-        'slug',
-        'type',
-    )
+    item_page_api_fields = [
+        APIField('id'),
+        APIField('title'),
+        APIField('slug'),
+        APIField('type'),
+    ]
 
     @classmethod
     def render_from_tag(
@@ -1103,10 +1096,10 @@ class AbstractMainMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
     )
 
     # Override to modify output for custom classes in wagtailmenus.api
-    api_fields = (
-        'site',
-        'items',
-    )
+    api_fields = [
+        APIField('site_id'),
+        APIField('items', ),
+    ]
 
     class Meta:
         abstract = True
@@ -1203,13 +1196,13 @@ class AbstractFlatMenu(DefinesSubMenuTemplatesMixin, MenuWithMenuItems):
     )
 
     # Override to modify output for custom classes in wagtailmenus.api
-    api_fields = (
-        'site',
-        'handle',
-        'title',
-        'heading',
-        'items',
-    )
+    api_fields = [
+        APIField('site_id'),
+        APIField('handle'),
+        APIField('title'),
+        APIField('heading'),
+        APIField('items'),
+    ]
 
     class Meta:
         abstract = True
